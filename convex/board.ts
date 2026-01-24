@@ -31,6 +31,7 @@ export const create=mutation({
         if(!identity){
             throw new Error("Not authenticated");
         }
+        
         const imageUrl=images[Math.floor(Math.random()*images.length)];
         const board=await ctx.db.insert("boards",{
             title:args.title,

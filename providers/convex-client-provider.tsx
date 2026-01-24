@@ -1,43 +1,45 @@
 "use client";
 
-import { ClerkProvider, useAuth } from "@clerk/nextjs";
+import { useAuth } from "@clerk/nextjs";
 import { ConvexProviderWithClerk } from "convex/react-clerk";
-import {
-    AuthLoading,
-    Authenticated,
-    ConvexReactClient,
-    Unauthenticated
-} from "convex/react"
-import { SignInButton} from "@clerk/clerk-react";
+import { ConvexReactClient } from "convex/react";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 import { Loading } from "@/components/auth/loading";
-import Home from "@/app/home/page";
 
+const convex = new ConvexReactClient(
+  process.env.NEXT_PUBLIC_CONVEX_URL!
+);
 
-interface ConvexClientProviderProps {
-    children: React.ReactNode;
+function RedirectToSignIn() {
+  const router = useRouter();
+
+  useEffect(() => {
+    router.replace("/sign-in");
+  }, [router]);
+
+  return <Loading />;
 }
 
-const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL!;
-const publishableKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY!;
+export function ConvexClientProvider({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const { isLoaded, isSignedIn } = useAuth();
 
-const convex = new ConvexReactClient(convexUrl);
+ 
+  if (!isLoaded) {
+    return <Loading />;
+  }
 
-export const ConvexClientProvider = ({ children }: ConvexClientProviderProps) => {
-    return (
-        <ClerkProvider publishableKey={publishableKey}>
-            <ConvexProviderWithClerk useAuth={useAuth} client={convex}>
-                <AuthLoading>
-                    <Loading/>
-                </AuthLoading>
-                <Unauthenticated>
-                    <Home/>
-                </Unauthenticated>
-                <Authenticated>
-                    {/* <UserButton/> */}
-                    {children}
-                </Authenticated>
-                
-            </ConvexProviderWithClerk>
-        </ClerkProvider>
-    )
+  return (
+    <ConvexProviderWithClerk useAuth={useAuth} client={convex}>
+      {!isSignedIn ? (
+        <RedirectToSignIn />
+      ) : (
+        children
+      )}
+    </ConvexProviderWithClerk>
+  );
 }
