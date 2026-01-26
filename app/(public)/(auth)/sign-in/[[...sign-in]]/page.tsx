@@ -4,6 +4,11 @@
 import { useSignIn } from '@clerk/nextjs';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import Image from 'next/image';
+import { toast } from 'sonner';
+import Link from 'next/link';
+
 import {
   Card,
   CardContent,
@@ -14,10 +19,19 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { toast } from 'sonner';
+
+/* ----------------------------------
+   Demo credentials (recruiter access)
+----------------------------------- */
+const DEMO_CREDENTIALS = {
+  email: 'demo@mindsketch.app',
+  password: 'demo12345',
+};
 
 export default function SignIn() {
   const { isLoaded, signIn, setActive } = useSignIn();
+  const router = useRouter();
+
   const [emailAddress, setEmailAddress] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -26,7 +40,6 @@ export default function SignIn() {
     password?: string;
     general?: string;
   }>({});
-  const router = useRouter();
 
   if (!signIn) return null;
 
@@ -38,131 +51,202 @@ export default function SignIn() {
     setIsLoading(true);
 
     try {
-      const signInAttempt = await signIn.create({
+      const res = await signIn.create({
         identifier: emailAddress,
         password,
       });
 
-      if (signInAttempt.status === 'complete') {
-        await setActive({ session: signInAttempt.createdSessionId });
-        toast.success('Login successful!');
+      if (res.status === 'complete') {
+        await setActive({ session: res.createdSessionId });
+        toast.success('Welcome back to Mindsketch ✨');
         router.push('/');
       } else {
-        toast.warning('Additional verification required');
+        toast('Additional verification required');
       }
     } catch (err: any) {
-      if (err.errors?.length) {
-        err.errors.forEach((error: any) => {
-          switch (error.code) {
-            case 'form_password_length_too_short':
-              setErrors((p) => ({ ...p, password: 'Minimum 8 characters.' }));
-              break;
-            case 'form_password_pwned':
-              setErrors((p) => ({ ...p, password: 'Password is too weak.' }));
-              break;
-            case 'form_identifier_exists':
-              setErrors((p) => ({ ...p, email: 'Email already exists.' }));
-              break;
-            default:
-              setErrors((p) => ({
-                ...p,
-                general: error.message || 'Authentication failed.',
-              }));
-          }
-        });
-      } else {
-        setErrors({ general: 'Unexpected error occurred.' });
-      }
+      const mappedErrors: typeof errors = {};
+
+      err?.errors?.forEach((e: any) => {
+        switch (e.code) {
+          case 'form_identifier_not_found':
+            mappedErrors.email = 'No account found with this email.';
+            break;
+          case 'form_password_incorrect':
+            mappedErrors.password = 'Incorrect password.';
+            break;
+          case 'form_password_length_too_short':
+            mappedErrors.password = 'Password must be at least 8 characters.';
+            break;
+          default:
+            mappedErrors.general =
+              e.message || 'Unable to sign in. Please try again.';
+        }
+      });
+
+      setErrors(mappedErrors);
+      toast.error('Sign in failed');
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-slate-100 to-slate-50 px-4">
-      <Card className="relative w-full max-w-md rounded-2xl border border-slate-200 bg-white/80 backdrop-blur-xl shadow-[0_20px_50px_-12px_rgba(0,0,0,0.15)]">
-        
-        {/* subtle top accent */}
-        <div className="absolute inset-x-0 top-0 h-1 rounded-t-2xl bg-gradient-to-r from-slate-300 via-slate-400 to-slate-300" />
+    <div className="relative min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-slate-100 to-slate-50 px-4 overflow-hidden">
 
-        <CardHeader className="text-center space-y-2 pt-8">
-          <CardTitle className="text-2xl font-semibold tracking-tight">
-            Welcome back
-          </CardTitle>
-          <CardDescription className="text-sm text-slate-500">
-            Log in to access your workspace
-          </CardDescription>
-        </CardHeader>
+      {/* Background */}
+      <Image
+        src="/hero-banner.svg"
+        alt="background"
+        fill
+        className="absolute top-0 object-cover opacity-70"
+        priority
+      />
 
-        <CardContent className="px-7 pb-8">
-          <form onSubmit={handleSubmit} className="space-y-5">
-            
-            <div className="space-y-2">
-              <Label htmlFor="email" className="text-sm">
-                Email address
-              </Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="you@example.com"
-                value={emailAddress}
-                onChange={(e) => setEmailAddress(e.target.value)}
-                className="h-11 transition-all focus-visible:ring-2 focus-visible:ring-slate-400"
-                required
+      {/* Card */}
+      <motion.div
+        initial={{ opacity: 0, y: 30 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6, ease: 'easeOut' }}
+        className="relative z-10 w-full max-w-md"
+      >
+        <Card className="rounded-2xl bg-white/80 backdrop-blur-xl shadow-2xl border border-slate-200">
+
+          {/* Brand */}
+          <CardHeader className="text-center pt-8 space-y-3">
+            <div className="flex justify-center">
+              <Image
+                src="/logo-em.png"
+                alt="Mindsketch"
+                width={44}
+                height={44}
+                priority
               />
-              {errors.email && (
-                <p className="text-xs text-red-600">{errors.email}</p>
-              )}
             </div>
+            <CardTitle className="text-2xl font-semibold tracking-tight">
+              Welcome back
+            </CardTitle>
+            <CardDescription>
+              Sign in to continue collaborating on Mindsketch
+            </CardDescription>
+          </CardHeader>
 
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="password" className="text-sm">
-                  Password
-                </Label>
-                <a
-                  href="forgot-password"
-                  className="text-xs text-slate-500 hover:text-slate-700 hover:underline"
-                >
-                  Forgot password?
-                </a>
+          <CardContent className="px-7 pb-8">
+            <form onSubmit={handleSubmit} className="space-y-5">
+
+              {/* Email */}
+              <div className="space-y-2">
+                <Label>Email address</Label>
+                <Input
+                  type="email"
+                  placeholder="you@example.com"
+                  value={emailAddress}
+                  onChange={(e) => setEmailAddress(e.target.value)}
+                  className="h-11"
+                />
+                <AnimatePresence>
+                  {errors.email && (
+                    <motion.p
+                      initial={{ opacity: 0, y: -4 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0 }}
+                      className="text-xs text-red-600"
+                    >
+                      {errors.email}
+                    </motion.p>
+                  )}
+                </AnimatePresence>
               </div>
-              <Input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="h-11 transition-all focus-visible:ring-2 focus-visible:ring-slate-400"
-                required
-              />
-              {errors.password && (
-                <p className="text-xs text-red-600">{errors.password}</p>
-              )}
-            </div>
 
-            <Button
-              type="submit"
-              disabled={isLoading}
-              className="w-full h-11 text-base font-medium shadow-md"
-            >
-              {isLoading ? 'Signing in…' : 'Sign in'}
-            </Button>
+              {/* Password */}
+              <div className="space-y-2">
+                <div className="flex justify-between items-center">
+                  <Label>Password</Label>
+                  <Link
+                    href="/forgot-password"
+                    className="text-xs text-slate-500 hover:underline"
+                  >
+                    Forgot password?
+                  </Link>
+                </div>
+                <Input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="h-11"
+                />
+                <AnimatePresence>
+                  {errors.password && (
+                    <motion.p
+                      initial={{ opacity: 0, y: -4 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0 }}
+                      className="text-xs text-red-600"
+                    >
+                      {errors.password}
+                    </motion.p>
+                  )}
+                </AnimatePresence>
+              </div>
 
-            {errors.general && (
-              <p className="text-center text-sm text-red-600">
-                {errors.general}
-              </p>
-            )}
-          </form>
+              {/* Submit */}
+              <Button
+                type="submit"
+                disabled={isLoading}
+                className="w-full h-11 text-base font-medium"
+              >
+                {isLoading ? 'Signing in…' : 'Sign in'}
+              </Button>
 
-          <div className="mt-6 text-center text-sm text-slate-600">
-            Don&apos;t have an account?{' '}
-            <a href="sign-up" className="font-medium underline underline-offset-4">
-              Sign up
-            </a>
-          </div>
-        </CardContent>
-      </Card>
+              {/* Demo Credentials Section */}
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.15 }}
+                className="rounded-xl border border-dashed border-slate-300 bg-slate-50/70 p-4 text-center space-y-3"
+              >
+                <p className="text-sm font-medium text-slate-700">
+                  👋 Just exploring?
+                </p>
+
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-9 text-sm"
+                  onClick={() => {
+                    setEmailAddress(DEMO_CREDENTIALS.email);
+                    setPassword(DEMO_CREDENTIALS.password);
+                    toast('Demo credentials filled');
+                  }}
+                >
+                  Use demo account
+                </Button>
+              </motion.div>
+
+              {/* General error */}
+              <AnimatePresence>
+                {errors.general && (
+                  <motion.p
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="text-center text-sm text-red-600"
+                  >
+                    {errors.general}
+                  </motion.p>
+                )}
+              </AnimatePresence>
+            </form>
+
+            <p className="mt-6 text-center text-sm text-slate-600">
+              Don&apos;t have an account?{' '}
+              <Link href="/sign-up" className="font-medium underline">
+                Sign up
+              </Link>
+            </p>
+          </CardContent>
+        </Card>
+      </motion.div>
     </div>
   );
 }

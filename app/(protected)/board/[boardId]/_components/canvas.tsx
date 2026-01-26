@@ -337,7 +337,7 @@ export const Canvas = ({boardId}:CanvasProps) => {
 
     return (
         <main
-            className="h-full w-full relative  bg-neutral-100 touch-none "
+            className="h-full w-full relative  bg-neutral-100 touch-none select-none"
         >
             <Info boardId={boardId}/>
             <Participants/>

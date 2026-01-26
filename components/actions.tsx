@@ -58,7 +58,7 @@ export const Actions = ({ children, side, sideOffset, id, title }: ActionProps) 
                 side={side}
                 sideOffset={sideOffset}
                 onClick={(e) => e.stopPropagation()}
-                className="w-60"
+                className="w-60 bg-white"
             >
                 <DropdownMenuItem onClick={handleCopyLink} className="p-3 cursor-pointer">
                     <Link2 className="h-4 w-4 mr-2" />

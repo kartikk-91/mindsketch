@@ -27,7 +27,7 @@ export const ConfirmModal = ({ children, onConfirm, disabled, header, descriptio
             <AlertDialogTrigger asChild>
                 {children}
             </AlertDialogTrigger>
-            <AlertDialogContent>
+            <AlertDialogContent className="bg-white">
                 <AlertDialogHeader>
                     <AlertDialogTitle>
                         {header}

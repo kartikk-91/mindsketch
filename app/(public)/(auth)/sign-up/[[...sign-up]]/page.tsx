@@ -1,8 +1,13 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import { useSignUp, useSignIn } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { motion } from "framer-motion";
+import Image from "next/image";
+import Link from "next/link";
+
 import {
   Card,
   CardContent,
@@ -13,7 +18,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import Link from "next/link";
 
 /* ================= TYPES ================= */
 
@@ -27,6 +31,13 @@ type ErrorKey =
   | "general";
 
 type Errors = Partial<Record<ErrorKey, string>>;
+
+type FieldTuple = [
+  string,
+  string,
+  React.Dispatch<React.SetStateAction<string>>,
+  ErrorKey
+];
 
 /* ================= PAGE ================= */
 
@@ -164,110 +175,154 @@ export default function Page() {
 
   if (verifying) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-slate-100 to-slate-50 px-4">
-        <Card className="w-full max-w-md rounded-2xl bg-white/80 backdrop-blur-xl shadow-xl">
-          <CardHeader className="text-center">
-            <CardTitle>Verify your email</CardTitle>
-            <CardDescription>
-              Enter the 6-digit code sent to your inbox
-            </CardDescription>
-          </CardHeader>
+      <div className="relative min-h-screen flex items-center justify-center px-4 overflow-hidden bg-gradient-to-br from-slate-50 via-slate-100 to-slate-50">
+        <Image
+          src="/hero-banner.svg"
+          alt="background"
+          fill
+          className="absolute top-0 object-cover opacity-70"
+          priority
+        />
 
-          <CardContent className="space-y-4">
-            <form onSubmit={handleVerify} className="space-y-4">
-              <Input
-                value={code}
-                onChange={(e) => setCode(e.target.value)}
-                maxLength={6}
-                className={`h-12 text-center tracking-[0.35em] text-lg ${
-                  errors.code
-                    ? "border-red-500 focus-visible:ring-red-400"
-                    : ""
-                }`}
-              />
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          className="relative z-10 w-full max-w-md"
+        >
+          <Card className="rounded-2xl bg-white/80 backdrop-blur-xl shadow-2xl border border-slate-200">
+            <CardHeader className="text-center space-y-3 pt-8">
+              <div className="flex justify-center">
+                <Image src="/logo-em.png" alt="Mindsketch" width={44} height={44} />
+              </div>
+              <CardTitle>Verify your email</CardTitle>
+              <CardDescription>
+                Enter the 6-digit code sent to your inbox
+              </CardDescription>
+            </CardHeader>
 
-              {errors.code && (
-                <p className="text-sm text-red-600 text-center">
-                  {errors.code}
-                </p>
-              )}
+            <CardContent className="space-y-4 pb-8">
+              <form onSubmit={handleVerify} className="space-y-4">
+                <Input
+                  value={code}
+                  onChange={(e) => setCode(e.target.value)}
+                  maxLength={6}
+                  className={`h-12 text-center tracking-[0.35em] text-lg ${
+                    errors.code
+                      ? "border-red-500 focus-visible:ring-red-400"
+                      : ""
+                  }`}
+                />
 
-              {successMessage && (
-                <p className="text-sm text-green-600 text-center">
-                  {successMessage}
-                </p>
-              )}
+                {errors.code && (
+                  <p className="text-sm text-red-600 text-center">
+                    {errors.code}
+                  </p>
+                )}
 
-              <Button
-                type="submit"
-                disabled={isVerifying || code.length !== 6}
-                className="w-full h-11"
+                {successMessage && (
+                  <p className="text-sm text-green-600 text-center">
+                    {successMessage}
+                  </p>
+                )}
+
+                <Button
+                  type="submit"
+                  disabled={isVerifying || code.length !== 6}
+                  className="w-full h-11"
+                >
+                  {isVerifying ? "Verifying…" : "Verify email"}
+                </Button>
+              </form>
+
+              <button
+                onClick={handleResendCode}
+                className="text-sm text-slate-600 hover:underline w-full text-center"
               >
-                {isVerifying ? "Verifying…" : "Verify email"}
-              </Button>
-            </form>
-
-            <button
-              onClick={handleResendCode}
-              className="text-sm text-slate-600 hover:underline w-full text-center"
-            >
-              Resend code
-            </button>
-          </CardContent>
-        </Card>
+                Resend code
+              </button>
+            </CardContent>
+          </Card>
+        </motion.div>
       </div>
     );
   }
 
   /* ================= SIGNUP UI ================= */
 
-  const nameFields: [
-    string,
-    string,
-    React.Dispatch<React.SetStateAction<string>>,
-    ErrorKey
-  ][] = [
-    ["First name", firstName, setFirstName, "firstName"],
-    ["Last name", lastName, setLastName, "lastName"],
-  ];
-
-  const fields: [
-    string,
-    string,
-    React.Dispatch<React.SetStateAction<string>>,
-    ErrorKey,
-    string?
-  ][] = [
-    ["Username", username, setUsername, "username"],
-    ["Email", emailAddress, setEmailAddress, "email", "email"],
-    ["Password", password, setPassword, "password", "password"],
-  ];
-
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-slate-100 to-slate-50 px-4">
-      <Card className="w-full max-w-lg rounded-2xl bg-white/80 backdrop-blur-xl shadow-xl">
-        <CardHeader className="text-center">
-          <CardTitle className="text-2xl font-semibold">
-            Create your account
-          </CardTitle>
-          <CardDescription>
-            Fill in your details to get started
-          </CardDescription>
-        </CardHeader>
+    <div className="relative min-h-screen flex items-center justify-center px-4 overflow-hidden bg-gradient-to-br from-slate-50 via-slate-100 to-slate-50">
+      <Image
+        src="/hero-banner.svg"
+        alt="background"
+        fill
+        className="absolute top-0 object-cover opacity-70"
+        priority
+      />
 
-        <CardContent className="space-y-5">
-          {errors.general && (
-            <div className="rounded-md bg-red-50 border border-red-200 p-3 text-sm text-red-700">
-              {errors.general}
+      <motion.div
+        initial={{ opacity: 0, y: 30 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6 }}
+        className="relative z-10 w-full max-w-lg"
+      >
+        <Card className="rounded-2xl bg-white/80 backdrop-blur-xl shadow-2xl border border-slate-200">
+          <CardHeader className="text-center space-y-3 pt-8">
+            <div className="flex justify-center">
+              <Image src="/logo-em.png" alt="Mindsketch" width={44} height={44} />
             </div>
-          )}
+            <CardTitle className="text-2xl font-semibold">
+              Create your account
+            </CardTitle>
+            <CardDescription>
+              Start collaborating on Mindsketch
+            </CardDescription>
+          </CardHeader>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              {nameFields.map(([label, value, setter, key]) => (
+          <CardContent className="space-y-5 pb-8">
+            {errors.general && (
+              <div className="rounded-md bg-red-50 border border-red-200 p-3 text-sm text-red-700">
+                {errors.general}
+              </div>
+            )}
+
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                {(
+                  [
+                    ["First name", firstName, setFirstName, "firstName"],
+                    ["Last name", lastName, setLastName, "lastName"],
+                  ] as FieldTuple[]
+                ).map(([label, value, setter, key]) => (
+                  <div key={key}>
+                    <Label>{label}</Label>
+                    <Input
+                      value={value}
+                      onChange={(e) => setter(e.target.value)}
+                      className={
+                        errors[key]
+                          ? "border-red-500 focus-visible:ring-red-400"
+                          : ""
+                      }
+                    />
+                    {errors[key] && (
+                      <p className="text-xs text-red-600">{errors[key]}</p>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              {(
+                [
+                  ["Username", username, setUsername, "username"],
+                  ["Email", emailAddress, setEmailAddress, "email"],
+                  ["Password", password, setPassword, "password"],
+                ] as FieldTuple[]
+              ).map(([label, value, setter, key]) => (
                 <div key={key}>
                   <Label>{label}</Label>
                   <Input
+                    type={key === "password" ? "password" : "text"}
                     value={value}
                     onChange={(e) => setter(e.target.value)}
                     className={
@@ -281,45 +336,23 @@ export default function Page() {
                   )}
                 </div>
               ))}
-            </div>
 
-            {fields.map(([label, value, setter, key, type]) => (
-              <div key={key}>
-                <Label>{label}</Label>
-                <Input
-                  type={type ?? "text"}
-                  value={value}
-                  onChange={(e) => setter(e.target.value)}
-                  className={
-                    errors[key]
-                      ? "border-red-500 focus-visible:ring-red-400"
-                      : ""
-                  }
-                />
-                {errors[key] && (
-                  <p className="text-xs text-red-600">{errors[key]}</p>
-                )}
-              </div>
-            ))}
+              <div id="clerk-captcha" />
 
-            <div id="clerk-captcha" />
+              <Button type="submit" disabled={isLoading} className="w-full h-11">
+                {isLoading ? "Creating…" : "Create account"}
+              </Button>
+            </form>
 
-            <Button type="submit" disabled={isLoading} className="w-full h-11">
-              {isLoading ? "Creating…" : "Create account"}
-            </Button>
-          </form>
-
-          <p className="text-center text-sm text-slate-600">
-            Already have an account?{" "}
-            <Link
-              href="/sign-in"
-              className="font-medium underline underline-offset-4"
-            >
-              Sign in
-            </Link>
-          </p>
-        </CardContent>
-      </Card>
+            <p className="text-center text-sm text-slate-600">
+              Already have an account?{" "}
+              <Link href="/sign-in" className="font-medium underline">
+                Sign in
+              </Link>
+            </p>
+          </CardContent>
+        </Card>
+      </motion.div>
     </div>
   );
 }

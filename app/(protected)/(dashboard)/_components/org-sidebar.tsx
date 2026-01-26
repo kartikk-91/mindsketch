@@ -1,83 +1,106 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { OrganizationSwitcher } from "@clerk/nextjs";
 import { LayoutDashboard, Star } from "lucide-react";
-import { Poppins } from "next/font/google";
 import Image from "next/image";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-
-const font = Poppins({
-  subsets: ["latin"],
-  weight: ["600"],
-});
 
 export const OrgSidebar = () => {
   const searchParams = useSearchParams();
   const favorites = searchParams.get("favorites");
 
   return (
-    <div className="hidden lg:flex flex-col space-y-6 w-[206px] pl-5 pt-5">
-      <Link href="/">
-        <div className="flex items-center gap-x-2">
-          <Image src="/logo.png" alt="Logo" height={24} width={24} />
-          <span className={cn("font-semibold text-2xl", font.className)}>
-            MindSketch
-          </span>
+    <aside className="hidden lg:flex h-full w-[240px] flex-col border-r border-slate-200 bg-white px-5 pt-5">
+      <Link href="/" className="mb-7">
+        <div className="flex items-center px-2">
+          <Image
+            src="/logo.png"
+            alt="Mindsketch"
+            height={26}
+            width={170}
+            priority
+          />
         </div>
       </Link>
-      <OrganizationSwitcher
-        hidePersonal
-        appearance={{
-          elements: {
-            rootBox: {
-              display: "flex",
-              justifyContent: "center",
-              alignItems: "center",
-              width: "100%",
+
+      <div className="mb-7">
+        <OrganizationSwitcher
+          hidePersonal
+          appearance={{
+            elements: {
+              rootBox: "w-full",
+              organizationSwitcherTrigger:
+                "flex w-full items-center justify-between rounded-lg border border-slate-200 bg-white px-3 py-2 text-[15px] shadow-sm hover:bg-slate-50 transition",
             },
-            organizationSwitcherTrigger: {
-              padding: "6px",
-              width: "100%",
-              borderRadius: "8px",
-              border: "1px solid #E6E7EB",
-              justifyContent: "space-between",
-              backgroundColor: "white",
-            },
-          },
-        }}
-      />
-      <div className="space-y-1 w-full">
-        <Button
-          variant={favorites ? "ghost" : "secondary"}
-          asChild
-          size="lg"
-          className="font-normal justify-start px-2 w-full"
-        >
-          <Link href="/">
-            <LayoutDashboard className="h-4 w-4 mr-2" />
-            Team boards
-          </Link>
-        </Button>
-        <Button
-          variant={favorites ? "secondary" : "ghost"}
-          asChild
-          size="lg"
-          className="font-normal justify-start px-2 w-full"
-        >
-          <Link
-            href={{
-              pathname: "/",
-              query: { favorites: true },
-            }}
-          >
-            <Star className="h-4 w-4 mr-2" />
-            Favorite boards
-          </Link>
-        </Button>
+          }}
+        />
       </div>
-    </div>
+
+      <nav className="flex flex-col gap-1.5">
+        <SidebarItem
+          href="/"
+          active={!favorites}
+          icon={LayoutDashboard}
+          label="Team boards"
+        />
+
+        <SidebarItem
+          href={{
+            pathname: "/",
+            query: { favorites: true },
+          }}
+          active={!!favorites}
+          icon={Star}
+          label="Favorite boards"
+        />
+      </nav>
+
+      <div className="flex-1" />
+
+      <p className="mb-5 px-2 text-xs text-slate-400">
+        Mindsketch workspace
+      </p>
+    </aside>
+  );
+};
+
+type SidebarItemProps = {
+  href: any;
+  active: boolean;
+  icon: any;
+  label: string;
+};
+
+const SidebarItem = ({
+  href,
+  active,
+  icon: Icon,
+  label,
+}: SidebarItemProps) => {
+  return (
+    <Link href={href}>
+      <div
+        className={cn(
+          "group flex items-center gap-3 rounded-xl px-3 py-2.5 text-[15px] transition",
+          active
+            ? "bg-slate-100 text-slate-900"
+            : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+        )}
+      >
+        <span
+          className={cn(
+            "h-5 w-[3px] rounded-full",
+            active ? "bg-slate-900" : "bg-transparent"
+          )}
+        />
+
+        <Icon className="h-[18px] w-[18px] shrink-0" />
+
+        <span className="truncate font-medium">{label}</span>
+      </div>
+    </Link>
   );
 };

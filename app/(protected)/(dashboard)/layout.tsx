@@ -1,4 +1,5 @@
 "use client";
+
 import { Navbar } from "./_components/navbar";
 import { OrgSidebar } from "./_components/org-sidebar";
 import { Sidebar } from "./_components/sidebar";
@@ -7,25 +8,34 @@ interface DashboardLayoutProps {
   children: React.ReactNode;
 }
 
-/**
- * @description Layout structure for Dashboard
- * @param param0 children accepts React.ReactNode elements
- * @returns JSX Elements
- */
 const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   return (
-    <main className="h-full">
-      <Sidebar />
-      <div className="pl-[60px] h-full">
-        <div className="flex gap-x-3 h-full">
-          <OrgSidebar />
-          <div className="h-full flex-1">
+    <div className="h-screen w-full overflow-hidden">
+     
+      <div className="hidden lg:block">
+        <Sidebar />
+      </div>
+
+      <div className="flex h-full w-full">
+        
+        <div className="hidden lg:block w-[64px]" />
+
+        <div className="flex h-full w-full">
+         
+          <div className="hidden lg:block">
+            <OrgSidebar />
+          </div>
+
+          <div className="flex flex-col flex-1 min-w-0">
             <Navbar />
-            {children}
+
+            <main className="flex-1 overflow-y-auto bg-slate-50">
+              {children}
+            </main>
           </div>
         </div>
       </div>
-    </main>
+    </div>
   );
 };
 

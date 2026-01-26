@@ -3,10 +3,8 @@
 import { Skeleton } from "@/components/ui/skeleton"
 import { useQuery } from "convex/react";
 import Image from "next/image";
-import { Poppins } from "next/font/google";
 import { Id } from "@/convex/_generated/dataModel";
 import { api } from "@/convex/_generated/api";
-import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { Hint } from "@/components/hint";
@@ -15,11 +13,6 @@ import { Actions } from "@/components/actions";
 import {  Menu } from "lucide-react";
 
 
-
-const font = Poppins({
-    subsets: ["latin"],
-    weight: ["600"],
-});
 
 
 const TabSeparator = () => {
@@ -53,20 +46,15 @@ export const Info = (
                 side="bottom"
                 sideOffset={10}
             >
-                <Button asChild className="px-2" variant={"board"}>
+                <Button asChild className="px-2" variant={"board"}
+                >
                     <Link href={"/"}>
                         <Image
                             src={"/logo.png"}
                             alt="Logo"
-                            width={40}
+                            width={150}
                             height={40}
                         />
-                        <span
-                            className={cn(
-                                "text-xl ml-2 font-semibold text-black",
-                                font.className
-                            )}
-                        >MindSketch</span>
                     </Link>
                 </Button>
             </Hint>

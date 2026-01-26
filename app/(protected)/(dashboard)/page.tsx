@@ -17,9 +17,7 @@ const DashboardPage = ({ searchParams }: DashboardPageProps) => {
     searchParams.then(params => setQuery(params));
   }, [searchParams]);
 
-  useEffect(() => {
-    console.log("✅ DASHBOARD MOUNTED");
-  }, []);
+  
 
   return (
     <div className="flex-1 h-[calc(100%-80px)] p-6">
