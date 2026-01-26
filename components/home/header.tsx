@@ -1,149 +1,122 @@
-"use client";
+'use client'
 
-import Image from "next/image";
-import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
-import menuData from "./menu-data";
-import { Poppins } from "next/font/google";
-import { cn } from "@/lib/utils";
+import Image from 'next/image'
+import React, { useState, useEffect } from 'react'
+import { Button } from '../ui/button'
+import { ArrowRight, Menu, X } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { useRouter } from 'next/navigation'
 
-const font = Poppins({
-  subsets: ["latin"],
-  weight: ["600"],
-});
+const navItems = ['home', 'features', 'pricing', 'about', 'contact']
 
 const Header = () => {
-  const [navigationOpen, setNavigationOpen] = useState(false);
-  const [dropdownToggler, setDropdownToggler] = useState(false);
-  const [stickyMenu, setStickyMenu] = useState(false);
+  const router=useRouter()
+  const [open, setOpen] = useState(false)
+  const [scrolled, setScrolled] = useState(false)
 
-  const pathname = usePathname();
-  const router = useRouter();
-
-  // Sticky menu handler
   useEffect(() => {
-    const handleStickyMenu = () => {
-      setStickyMenu(window.scrollY >= 80);
-    };
+    const onScroll = () => {
+      setScrolled(window.scrollY > 40)
+    }
 
-    window.addEventListener("scroll", handleStickyMenu);
-    return () => window.removeEventListener("scroll", handleStickyMenu);
-  }, []);
+    window.addEventListener('scroll', onScroll)
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
 
   return (
-    <header
-      className={`fixed left-0 top-0 z-50 w-full py-7 ${
-        stickyMenu
-          ? "bg-white !py-4 shadow transition duration-100 dark:bg-black"
-          : ""
-      }`}
-    >
-      <div className="relative mx-auto max-w-c-1390 items-center justify-between px-4 md:px-8 xl:flex 2xl:px-0">
-        {/* Logo */}
-        <div className="flex w-full items-center justify-between xl:w-1/4">
-          <Link href="/" className="flex items-end gap-2">
-            <Image
-              src="/logo.png"
-              alt="logo"
-              width={60}
-              height={30}
-              className="dark:hidden"
-            />
-            <Image
-              src="/logo.png"
-              alt="logo"
-              width={60}
-              height={30}
-              className="hidden dark:block"
-            />
-            <span className={cn("font-semibold text-2xl", font.className)}>
-              MindSketch
-            </span>
-          </Link>
+    <>
+      <motion.nav
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.25, ease: 'easeOut' }}
+        className={`px-6 md:px-16 lg:px-4 xl:px-16 py-4 w-full h-22 fixed top-0 z-40 flex justify-between items-center transition-all duration-300
+          ${scrolled ? 'bg-white/90 backdrop-blur-md border-b border-[#0E0E0E12]' : 'bg-transparent'}
+        `}
+      >
+        <div className="w-[50%] lg:w-[20%] xl:w-[25%]">
+          <Image src="/logo.png" alt="Mindsketch" width={200} height={55} />
+        </div>
 
-          {/* Mobile toggle */}
+        <ul className="hidden lg:flex w-full max-w-xl xl:max-w-2xl h-full border-[1px] bg-white rounded-full justify-between px-12 items-center">
+          {navItems.map((item, index) => (
+            <li
+              key={index}
+              className="text-lg capitalize cursor-pointer transition-opacity hover:opacity-70"
+            >
+              {item}
+            </li>
+          ))}
+        </ul>
+
+        <div className="w-[15%] xl:w-[25%] h-full py-1 flex justify-end gap-4">
+          <Button onClick={() => router.push("/sign-in")} className="rounded-full h-full bg-transparent border-[1px] hover:bg-transparent text-md text-black px-6 pr-2 hidden xl:flex">
+            Log in
+            <span className="rounded-full w-8 h-full bg-white text-black flex items-center justify-center">
+              <ArrowRight />
+            </span>
+          </Button>
+
+          <Button onClick={() => router.push("/sign-up")} className="rounded-full h-full border-[1px] text-md px-6 pr-2 hidden lg:flex">
+            Sign Up
+            <span className="rounded-full w-8 h-full bg-white text-black flex items-center justify-center">
+              <ArrowRight />
+            </span>
+          </Button>
+
           <button
-            aria-label="Toggle Menu"
-            className="block xl:hidden"
-            onClick={() => setNavigationOpen(!navigationOpen)}
+            className="lg:hidden flex items-center justify-center"
+            onClick={() => setOpen(true)}
           >
-            ☰
+            <Menu size={28} />
           </button>
         </div>
+      </motion.nav>
 
-        {/* Navigation */}
-        <div
-          className={`${
-            navigationOpen ? "block" : "hidden"
-          } xl:flex xl:items-center xl:justify-between xl:w-full`}
-        >
-          <nav>
-            <ul className="flex flex-col gap-5 xl:flex-row xl:items-center xl:gap-10">
-              {menuData.map((menuItem, key) => (
-                <li key={key} className="relative">
-                  {menuItem.submenu ? (
-                    <>
-                      <button
-                        onClick={() => setDropdownToggler(!dropdownToggler)}
-                        className="flex items-center gap-2 hover:text-primary"
-                      >
-                        {menuItem.title}
-                      </button>
-
-                      {dropdownToggler && (
-                        <ul className="absolute top-full mt-2 rounded bg-white p-4 shadow">
-                          {menuItem.submenu.map((item, idx) => (
-                            <li key={idx}>
-                              <Link
-                                href={item.path || "#"}
-                                className="block py-1 hover:text-primary"
-                              >
-                                {item.title}
-                              </Link>
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                    </>
-                  ) : (
-                    <Link
-                      href={menuItem.path || "#"}
-                      className={
-                        pathname === menuItem.path
-                          ? "text-primary"
-                          : "hover:text-primary"
-                      }
-                    >
-                      {menuItem.title}
-                    </Link>
-                  )}
-                </li>
-              ))}
-            </ul>
-          </nav>
-
-          {/* Right actions */}
-          <div className="mt-6 flex items-center gap-6 xl:mt-0">
-            <Link
-              href="https://github.com/kartik1809/mindsketch"
-              className="text-regular font-medium text-waterloo hover:text-primary"
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-40 bg-black/30"
+            onClick={() => setOpen(false)}
+          >
+            <motion.div
+              initial={{ x: '100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '100%' }}
+              transition={{ duration: 0.3, ease: 'easeOut' }}
+              className="absolute right-0 top-0 h-full w-[280px] bg-white p-6"
+              onClick={(e) => e.stopPropagation()}
             >
-              GitHub Repo 🌟
-            </Link>
+              <button
+                className="mb-6"
+                onClick={() => setOpen(false)}
+              >
+                <X size={28} />
+              </button>
 
-            {/* ✅ SAFE SIGN IN BUTTON */}
-            <button
-              onClick={() => router.push("/sign-in")}
-              className="flex items-center justify-center rounded-full bg-primary px-7.5 py-2.5 text-regular text-white duration-300 hover:bg-primaryho"
-            >
-              Sign in
-            </button>
-          </div>
-        </div>
-      </div>
-    </header>
-  );
-};
+              <ul className="flex flex-col gap-6">
+                {navItems.map((item, index) => (
+                  <li
+                    key={index}
+                    className="text-lg capitalize cursor-pointer"
+                  >
+                    {item}
+                  </li>
+                ))}
+              </ul>
 
-export default Header;
+              <div className="mt-10 flex flex-col gap-4">
+                <Button onClick={() => router.push("/sign-in")} className="rounded-full border">Log in</Button>
+                <Button onClick={() => router.push("/sign-up")} className="rounded-full">Sign Up</Button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
+  )
+}
+
+export default Header

@@ -1,95 +1,57 @@
 "use client";
-import { RedirectToSignIn } from "@clerk/nextjs";
-import Image from "next/image";
-import { useState } from "react";
+import React from 'react'
+import { Input } from '../ui/input'
+import { Button } from '../ui/button'
+import { ArrowRight } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+
 
 const Hero = () => {
-  const [redirect, setRedirect] = useState(false);
-
-  const handleRedirect = () => {
-    setRedirect(true);
-  }
-
+  const router=useRouter();
   return (
-    <>
-      <section className="overflow-hidden pb-20 pt-35 md:pt-40 xl:pb-25 xl:pt-46">
-        <div className="mx-auto max-w-c-1390 px-4 md:px-8 2xl:px-0">
-          <div className="flex lg:items-center lg:gap-8 xl:gap-32.5">
-            <div className=" md:w-1/2">
-              <h4 className="mb-4.5 text-lg font-medium text-black dark:text-white">
-                🔥Welcome to MindSketch
-              </h4>
-              <h1 className="mb-5 pr-16 text-3xl font-bold text-black dark:text-white xl:text-hero ">
-                Your Ideas, Your Canvas &#45;{"   "}
-                <span className="relative inline-block before:absolute before:bottom-2.5 before:left-0 before:-z-1 before:h-3 before:w-full before:bg-titlebg dark:before:bg-titlebgdark ">
-                  Shared in Real-Time
-                </span>
-              </h1>
-              <p>
-                Hey there! Have you ever had a brilliant idea but struggled to put it down or share it with others? mindSketch is here to change that. It&rsquo;s not just a whiteboard&mdash;it&rsquo;s your creative space to think, sketch, and share with anyone, anywhere.
-              </p>
+    <div className='h-[100vh] w-full flex flex-col justify-center items-center pt-12 sm:pt-0'>
+      <div className='max-w-5xl w-full h-fit flex flex-col gap-y-6 items-center text-center px-6 md:px-0'>
+        <div className='px-6 py-2 rounded-full bg-[#F1FEE1] border-[1px] sm:text-xl font-semibold text-[#0E0E0E]'>Think. Sketch. Collaborate.</div>
+        <div className='text-3xl xs:text-4xl sm:text-5xl md:text-7xl font-bold'>Ideas Deserve Space <br />
+          To Grow Together Visually</div>
+        <div className='sm:text-xl text-[#696969] max-w-xl md:max-w-2xl mt-4'>MindSketch helps visual teams brainstorm ideas, sketch workflows, and collaborate in real time, all in one whiteboard.</div>
+        <div className='rounded-full w-full max-w-xl h-16 hidden sm:flex gap-4 items-center justify-center border-2 p-2 bg-white'>
+          <Input
+            type="text"
+            placeholder="Your email address"
+            className="!text-[16px] border-none !ring-0 !ring-offset-0 focus:!ring-0 focus-visible:!ring-0 focus-visible:!outline-none outline-none"
+          />
 
-              <div className="mt-10">
-                <button
-                  onClick={handleRedirect}
-                  aria-label="get started button"
-                  className="flex rounded-full bg-black px-7.5 py-2.5 text-white duration-300 ease-in-out hover:bg-blackho dark:bg-btndark dark:hover:bg-blackho"
-                >
-                  Get Started
-                </button>
-                {
-                  redirect && <RedirectToSignIn />
-                }
-                <p className="mt-5 text-black dark:text-white">
-                  Try for free no credit card required.
-                </p>
-              </div>
-            </div>
-
-            <div className="animate_right hidden md:w-1/2 lg:block">
-              <div className="relative 2xl:-mr-7.5">
-                <Image
-                  src="/images/shape/shape-01.png"
-                  alt="shape"
-                  width={46}
-                  height={246}
-                  className="absolute -left-11.5 top-0"
-                />
-                <Image
-                  src="/images/shape/shape-02.svg"
-                  alt="shape"
-                  width={36.9}
-                  height={36.7}
-                  className="absolute bottom-0 right-0 z-10"
-                />
-                <Image
-                  src="/images/shape/shape-03.svg"
-                  alt="shape"
-                  width={21.64}
-                  height={21.66}
-                  className="absolute -right-6.5 bottom-0 z-1"
-                />
-                <div className=" relative aspect-[700/444] w-full">
-                  <Image
-                    className="shadow-solid-l dark:hidden"
-                    src="/images/hero/hero-light.svg"
-                    alt="Hero"
-                    fill
-                  />
-                  <Image
-                    className="hidden shadow-solid-l dark:block"
-                    src="/images/hero/hero-dark.svg"
-                    alt="Hero"
-                    fill
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
+          <Button className="rounded-full h-full border-[1px] text-md px-6 pr-2 flex">
+            Request a Demo
+            <span className="rounded-full w-8 h-full bg-white text-black flex items-center justify-center">
+              <ArrowRight />
+            </span>
+          </Button>
         </div>
-      </section>
-    </>
-  );
-};
+        <div className='w-full max-w-lg flex sm:hidden flex-col gap-4 items-center justify-center '>
+          <Input
+            type="text"
+            placeholder="Your email address"
+            className="!text-[16px] !ring-0 !ring-offset-0 focus:!ring-0 focus-visible:!ring-0 focus-visible:!outline-none outline-none rounded-full bg-white h-16 border-2 p-4 max-w-sm"
+          />
 
-export default Hero;
+          <Button className="rounded-full h-full border-[1px] text-md px-6 pr-2 flex">
+            Request a Demo
+            <span className="rounded-full w-8 h-full bg-white text-black flex items-center justify-center">
+              <ArrowRight />
+            </span>
+          </Button>
+        </div>
+        <Button onClick={() => router.push("/sign-in")} className="rounded-full h-8 bg-transparent border-[1px] hover:bg-transparent text-sm text-black px-4 pr-1 flex sm:hidden cursor-pointer">
+            Log in
+            <span className="rounded-full w-4 h-full bg-white text-black flex items-center justify-center">
+              <ArrowRight size={8}/>
+            </span>
+          </Button>
+      </div>
+    </div>
+  )
+}
+
+export default Hero

@@ -1,0 +1,22 @@
+<svg width="1920" height="1166" viewBox="0 0 1920 1166" fill="none" xmlns="http://www.w3.org/2000/svg">
+<mask id="mask0_2032_2226" style="mask-type:alpha" maskUnits="userSpaceOnUse" x="0" y="0" width="1920" height="1166">
+<rect width="1920" height="1166" fill="#0E0E0E"/>
+</mask>
+<g mask="url(#mask0_2032_2226)">
+<g filter="url(#filter0_f_2032_2226)">
+<circle cx="960" cy="-595" r="700" fill="#B9FB6A"/>
+</g>
+</g>
+<path d="M366 666H365V1H366V666ZM423 666H422V1H423V666ZM480 666H479V1H480V666ZM537 666H536V1H537V666ZM594 666H593V1H594V666ZM651 666H650V1H651V666ZM708 666H707V1H708V666ZM765 666H764V1H765V666ZM822 666H821V1H822V666ZM879 666H878V1H879V666ZM936 666H935V1H936V666ZM993 666H992V1H993V666ZM1050 666H1049V1H1050V666ZM1107 666H1106V1H1107V666ZM1164 666H1163V1H1164V666ZM1221 666H1220V1H1221V666ZM1278 666H1277V1H1278V666ZM1335 666H1334V1H1335V666ZM1392 666H1391V1H1392V666ZM1449 666H1448V1H1449V666ZM1506 666H1505V1H1506V666ZM1563 666H1562V1H1563V666Z" fill="url(#paint0_linear_2032_2226)"/>
+<defs>
+<filter id="filter0_f_2032_2226" x="-440" y="-1995" width="2800" height="2800" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+<feFlood flood-opacity="0" result="BackgroundImageFix"/>
+<feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape"/>
+<feGaussianBlur stdDeviation="350" result="effect1_foregroundBlur_2032_2226"/>
+</filter>
+<linearGradient id="paint0_linear_2032_2226" x1="964" y1="1" x2="964" y2="666" gradientUnits="userSpaceOnUse">
+<stop stop-color="#0E0E0E" stop-opacity="0.1"/>
+<stop offset="1" stop-color="#0E0E0E" stop-opacity="0"/>
+</linearGradient>
+</defs>
+</svg>
