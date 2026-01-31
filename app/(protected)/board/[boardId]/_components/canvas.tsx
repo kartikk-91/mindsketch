@@ -1,9 +1,11 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import { useEffect } from "react";
 
 import { useCallback, useMemo, useState } from "react";
-import { Camera, CanvasMode, CanvasState, Color, LayerType, Point, Side, XYWH } from "@/types/canvas";
+import { Camera, CanvasMode, CanvasState, Color, LayerType, Point, Side, XYWH, Layer } from "@/types/canvas";
+
 
 import { Info } from "./info";
 import { Participants } from "./participants";
@@ -82,28 +84,72 @@ export const Canvas = ({ boardId }: CanvasProps) => {
         return () => document.removeEventListener("keydown", onKeyDown);
     }, [deleteLayers, history]);
 
-    const insertLayer = useMutation(({ storage, setMyPresence }, layerType: LayerType.Ellipse | LayerType.Note | LayerType.Rectangle | LayerType.Text, position: Point) => {
-        const liveLayers = storage.get('layers');
-        if (liveLayers.size >= MAX_LAYERS) {
-            return;
-        }
-        const liveLayerIds = storage.get('layerIds');
-        const layerId = nanoid();
-        const layer = new LiveObject({
-            type: layerType,
-            x: position.x,
-            y: position.y,
-            width: 100,
-            height: 100,
-            fill: lastUsedColor,
-        });
+    const insertLayer = useMutation(
+        (
+            { storage, setMyPresence },
+            layerType: LayerType.Ellipse | LayerType.Note | LayerType.Rectangle | LayerType.Text,
+            position: Point
+        ) => {
+            const liveLayers = storage.get("layers");
+            if (liveLayers.size >= MAX_LAYERS) {
+                return;
+            }
 
-        liveLayerIds.push(layerId);
-        liveLayers.set(layerId, layer);
-        setMyPresence({ selection: [layerId] }, { addToHistory: true });
-        setCanvasState({ mode: CanvasMode.None });
+            const liveLayerIds = storage.get("layerIds");
+            const layerId = nanoid();
 
-    }, [lastUsedColor])
+            const layer = new LiveObject<{
+                type: LayerType.Ellipse | LayerType.Note | LayerType.Rectangle | LayerType.Text;
+                x: number;
+                y: number;
+                width: number;
+                height: number;
+                fill: Color;
+            }>({
+                type: layerType,
+                x: position.x,
+                y: position.y,
+                width: 100,
+                height: 100,
+                fill: lastUsedColor,
+            });
+
+            liveLayerIds.push(layerId);
+            liveLayers.set(layerId, layer as LiveObject<Layer>);
+            setMyPresence({ selection: [layerId] }, { addToHistory: true });
+            setCanvasState({ mode: CanvasMode.None });
+        },
+        [lastUsedColor]
+    );
+
+
+    const insertImageLayer = useMutation(
+        ({ storage, setMyPresence }, position: Point) => {
+            const liveLayers = storage.get("layers");
+            if (liveLayers.size >= MAX_LAYERS) {
+                return;
+            }
+
+            const liveLayerIds = storage.get("layerIds");
+            const layerId = nanoid();
+
+            const layer = new LiveObject({
+                type: LayerType.Image,
+                x: position.x,
+                y: position.y,
+                width: 300,
+                height: 200,
+                src: (canvasState as any).imageSrc,
+            });
+
+            liveLayerIds.push(layerId);
+            liveLayers.set(layerId, layer as LiveObject<Layer>);
+            setMyPresence({ selection: [layerId] }, { addToHistory: true });
+            setCanvasState({ mode: CanvasMode.None });
+        },
+        [canvasState]
+    );
+
 
     const translateSelectedLayers = useMutation(({ storage, self }, point: Point) => {
         if (canvasState.mode !== CanvasMode.Translating) {
@@ -251,6 +297,12 @@ export const Canvas = ({ boardId }: CanvasProps) => {
             continueDrawing(current, e);
         }
         setMyPresence({ cursor: current });
+        setCanvasState((prev) =>
+            prev.mode === CanvasMode.Inserting
+                ? { ...prev, current }
+                : prev
+        );
+
     }, [canvasState, resizeSelectedLayer, camera, continueDrawing, translateSelectedLayers, updateSelectionNet, startMultiSelection])
 
     const onPointerLeave = useMutation(({ setMyPresence }) => {
@@ -282,8 +334,16 @@ export const Canvas = ({ boardId }: CanvasProps) => {
             insertPath();
         }
         else if (canvasState.mode === CanvasMode.Inserting) {
-            if (canvasState.layertype === LayerType.Text || canvasState.layertype === LayerType.Note || canvasState.layertype === LayerType.Rectangle || canvasState.layertype === LayerType.Ellipse) {
+            if (
+                canvasState.layertype === LayerType.Text ||
+                canvasState.layertype === LayerType.Note ||
+                canvasState.layertype === LayerType.Rectangle ||
+                canvasState.layertype === LayerType.Ellipse
+            ) {
                 insertLayer(canvasState.layertype, point);
+            } else if (canvasState.layertype === LayerType.Image &&
+                canvasState.imageSrc) {
+                insertImageLayer(point);
             }
         }
         else {
@@ -354,7 +414,14 @@ export const Canvas = ({ boardId }: CanvasProps) => {
                 camera={camera}
                 setLastUsedColor={setLastUsedColor}
             />
-            <ShareActions id={boardId}/>
+            <ShareActions id={boardId} />
+            {canvasState.mode === CanvasMode.Inserting &&
+                canvasState.layertype === LayerType.Image && (
+                    <div className="absolute top-3 left-1/2 -translate-x-1/2 bg-black text-white text-sm px-3 py-1 rounded">
+                        Click anywhere to place image
+                    </div>
+                )}
+
             <div id="export-root" className="w-[100vw] h-[100vh]">
                 <svg id="mindsketch-canvas"
                     className="h-[100vh] w-[100vw]"
@@ -363,6 +430,14 @@ export const Canvas = ({ boardId }: CanvasProps) => {
                     onPointerUp={onPointerUp}
                     onPointerMove={onPointerMove}
                     onPointerLeave={onPointerLeave}
+                    style={{
+                        cursor:
+                            canvasState.mode === CanvasMode.Inserting &&
+                                canvasState.layertype === LayerType.Image
+                                ? "crosshair"
+                                : "default",
+                    }}
+
                 >
                     <defs>
 
@@ -438,6 +513,21 @@ export const Canvas = ({ boardId }: CanvasProps) => {
                             />
                         )
                         }
+                        {canvasState.mode === CanvasMode.Inserting &&
+                            canvasState.layertype === LayerType.Image &&
+                            canvasState.imageSrc &&
+                            canvasState.current && (
+                                <image
+                                    href={canvasState.imageSrc}
+                                    x={canvasState.current.x - 150}
+                                    y={canvasState.current.y - 100}
+                                    width={300}
+                                    height={200}
+                                    opacity={0.6}
+                                    pointerEvents="none"
+                                />
+                            )}
+
                     </g>
                 </svg>
             </div>

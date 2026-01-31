@@ -1,13 +1,13 @@
 "use client";
 
 import { useSelectionBounds } from "@/hooks/use-selection-bounds";
-import { Camera, Color } from "@/types/canvas";
+import { Camera, Color, LayerType } from "@/types/canvas";
 import { useSelf } from "@liveblocks/react";
 import { memo } from "react";
 import { ColorPicker } from "./color-picker";
 import { useMutation } from "@liveblocks/react";
 import { useDeleteLayers } from "@/hooks/use-delete-layers";
-import { Button} from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import { Hint } from "@/components/hint";
 import { BringToFront, SendToBack, Trash2 } from "lucide-react";
 
@@ -20,48 +20,66 @@ export const SelectionTools = memo(({ camera, setLastUsedColor }: SelectionTools
     const selection = useSelf((me) => me.presence.selection);
     const selectionBounds = useSelectionBounds();
 
-    const moveToBack = useMutation(({storage})=>{
-        const liveLayerIds=storage.get("layerIds");
-        const indices:number[]=[]
+    const moveToBack = useMutation(({ storage }) => {
+        const liveLayerIds = storage.get("layerIds");
+        const indices: number[] = []
 
-        const arr=liveLayerIds.toImmutable();
-        for(let i=0;i<arr.length;i++){
-            if(selection?.includes(arr[i])){
+        const arr = liveLayerIds.toImmutable();
+        for (let i = 0; i < arr.length; i++) {
+            if (selection?.includes(arr[i])) {
                 indices.push(i);
             }
         }
-        for(let i=0;i<indices.length;i++){
-            liveLayerIds.move(indices[i],i);
+        for (let i = 0; i < indices.length; i++) {
+            liveLayerIds.move(indices[i], i);
         }
-    },[selection]);
+    }, [selection]);
 
-    const MoveToFront = useMutation(({storage})=>{
-        const liveLayerIds=storage.get("layerIds");
-        const indices:number[]=[]
+    const MoveToFront = useMutation(({ storage }) => {
+        const liveLayerIds = storage.get("layerIds");
+        const indices: number[] = []
 
-        const arr=liveLayerIds.toImmutable();
-        for(let i=0;i<arr.length;i++){
-            if(selection?.includes(arr[i])){
+        const arr = liveLayerIds.toImmutable();
+        for (let i = 0; i < arr.length; i++) {
+            if (selection?.includes(arr[i])) {
                 indices.push(i);
             }
         }
-        for(let i=0;i<indices.length;i++){
-            liveLayerIds.move(indices[i],liveLayerIds.length-1);
+        for (let i = 0; i < indices.length; i++) {
+            liveLayerIds.move(indices[i], liveLayerIds.length - 1);
         }
-    },[selection]);
+    }, [selection]);
 
 
     const setFill = useMutation(
-        ({ storage }, fill: Color,) => {
+        ({ storage }, fill: Color) => {
             const liveLayers = storage.get("layers");
             setLastUsedColor(fill);
+    
             selection?.forEach((id) => {
-                liveLayers.get(id)?.set("fill", fill);
+                const layer = liveLayers.get(id);
+                if (!layer) return;
+    
+                if (
+                    layer.get("type") === LayerType.Rectangle ||
+                    layer.get("type") === LayerType.Ellipse ||
+                    layer.get("type") === LayerType.Text ||
+                    layer.get("type") === LayerType.Note ||
+                    layer.get("type") === LayerType.Path
+                ) {
+                    if (layer.set) {
+                        // @ts-expect-error - allow dynamic set for fill property on supported layer types
+                        layer.set("fill", fill);
+                    }
+                }
             });
-        },[selection,setLastUsedColor]);
+        },
+        [selection, setLastUsedColor]
+    );
+    
 
 
-        const deleteLayers=useDeleteLayers();
+    const deleteLayers = useDeleteLayers();
 
     if (!selectionBounds) {
         return null;
@@ -85,7 +103,7 @@ export const SelectionTools = memo(({ camera, setLastUsedColor }: SelectionTools
                         size={"icon"}
                         onClick={MoveToFront}
                     >
-                        <BringToFront/>
+                        <BringToFront />
                     </Button>
                 </Hint>
                 <Hint label="Send to Back">
@@ -105,7 +123,7 @@ export const SelectionTools = memo(({ camera, setLastUsedColor }: SelectionTools
                     label="Delete"
                 >
                     <Button variant={"board"} size={"icon"} onClick={deleteLayers}>
-                        <Trash2/>
+                        <Trash2 />
                     </Button>
                 </Hint>
             </div>

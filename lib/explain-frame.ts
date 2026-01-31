@@ -1,6 +1,5 @@
 // @ts-expect-error: No types for 'dom-to-image-more'
 import * as domtoimage from "dom-to-image-more";
-import jsPDF from "jspdf";
 
 async function inlineImages(root: HTMLElement) {
   const images = Array.from(root.querySelectorAll("image"));
@@ -24,13 +23,11 @@ async function inlineImages(root: HTMLElement) {
   );
 }
 
-
 function createExportClone(): HTMLElement | null {
   const original = document.getElementById("export-root");
   if (!original) return null;
 
   const clone = original.cloneNode(true) as HTMLElement;
-
 
   clone.style.position = "fixed";
   clone.style.left = "-99999px";
@@ -38,10 +35,8 @@ function createExportClone(): HTMLElement | null {
   clone.style.pointerEvents = "none";
   clone.style.background = "#ffffff";
 
-
   clone.querySelectorAll("foreignObject *").forEach((el) => {
     const htmlEl = el as HTMLElement;
-
     htmlEl.style.background = "transparent";
     htmlEl.style.border = "none";
     htmlEl.style.outline = "none";
@@ -54,12 +49,9 @@ function createExportClone(): HTMLElement | null {
 }
 
 
-export async function exportFramePNG() {
-
-
+export async function getFrameBase64(): Promise<string | null> {
   const clone = createExportClone();
-  if (!clone) return;
-
+  if (!clone) return null;
   await inlineImages(clone);
   try {
     const dataUrl = await domtoimage.toPng(clone, {
@@ -68,47 +60,29 @@ export async function exportFramePNG() {
       cacheBust: true,
     });
 
-    const link = document.createElement("a");
-    link.download = "mindsketch-frame.png";
-    link.href = dataUrl;
-    link.click();
+    return dataUrl.replace(/^data:image\/png;base64,/, "");
   } catch (err) {
-    console.error("Frame export failed", err);
-    alert("Export failed");
+    console.error("Frame capture failed", err);
+    return null;
   } finally {
     clone.remove();
   }
 }
 
 
-export async function exportFramePDF() {
-  const clone = createExportClone();
-  if (!clone) return;
-
-  try {
-    const dataUrl = await domtoimage.toPng(clone, {
-      bgcolor: "#ffffff",
-      scale: 2,
-      cacheBust: true,
+export async function explainCurrentFrame() {
+    const frameBase64 = await getFrameBase64();
+    if (!frameBase64) return null;
+  
+    const res = await fetch("/api/explain-frame", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        imageBase64: frameBase64,
+        mimeType: "image/png",
+      }),
     });
-
-    const img = new Image();
-    img.src = dataUrl;
-
-    img.onload = () => {
-      const pdf = new jsPDF({
-        orientation: "landscape",
-        unit: "px",
-        format: [img.width, img.height],
-      });
-
-      pdf.addImage(img, "PNG", 0, 0, img.width, img.height);
-      pdf.save("mindsketch-frame.pdf");
-    };
-  } catch (err) {
-    console.error("Frame PDF export failed", err);
-    alert("Export failed");
-  } finally {
-    clone.remove();
+  
+    return res.json(); 
   }
-}
+  
