@@ -29,6 +29,7 @@ export default function RootLayout({
         <ClerkProvider
           signInUrl="/sign-in"
           signUpUrl="/sign-up"
+          afterSignOutUrl="/sign-in"
         >
           {children}
           <Toaster />

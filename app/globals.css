@@ -84,3 +84,18 @@ html,body,:root{
 .cl-navbar > div:nth-child(1) {
   background: none;
 }
+
+.exporting * {
+  outline: none !important;
+  box-shadow: none !important;
+  text-shadow: none !important;
+  filter: none !important;
+  caret-color: transparent !important;
+}
+
+
+.exporting *:focus,
+.exporting *:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+}

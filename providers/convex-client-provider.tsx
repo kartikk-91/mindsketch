@@ -34,7 +34,7 @@ export function ConvexClientProvider({
   }
 
   return (
-    <ConvexProviderWithClerk useAuth={useAuth} client={convex}>
+    <ConvexProviderWithClerk  useAuth={useAuth} client={convex}>
       {!isSignedIn ? (
         <RedirectToSignIn />
       ) : (
