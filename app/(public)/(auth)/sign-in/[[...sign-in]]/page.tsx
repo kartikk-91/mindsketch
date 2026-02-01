@@ -20,9 +20,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 
-/* ----------------------------------
-   Demo credentials (recruiter access)
------------------------------------ */
+
 const DEMO_CREDENTIALS = {
   email: 'demo@mindsketch.app',
   password: 'demo12345',
@@ -93,8 +91,7 @@ export default function SignIn() {
   return (
     <div className="relative min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-slate-100 to-slate-50 px-4 overflow-hidden">
 
-      {/* Background */}
-      <Image
+            <Image
         src="/hero-banner.svg"
         alt="background"
         fill
@@ -102,8 +99,7 @@ export default function SignIn() {
         priority
       />
 
-      {/* Card */}
-      <motion.div
+            <motion.div
         initial={{ opacity: 0, y: 30 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, ease: 'easeOut' }}
@@ -111,8 +107,7 @@ export default function SignIn() {
       >
         <Card className="rounded-2xl bg-white/80 backdrop-blur-xl shadow-2xl border border-slate-200">
 
-          {/* Brand */}
-          <CardHeader className="text-center pt-8 space-y-3">
+                    <CardHeader className="text-center pt-8 space-y-3">
             <div className="flex justify-center">
               <Image
                 src="/logo-em.png"
@@ -133,8 +128,7 @@ export default function SignIn() {
           <CardContent className="px-7 pb-8">
             <form onSubmit={handleSubmit} className="space-y-5">
 
-              {/* Email */}
-              <div className="space-y-2">
+                            <div className="space-y-2">
                 <Label>Email address</Label>
                 <Input
                   type="email"
@@ -157,8 +151,7 @@ export default function SignIn() {
                 </AnimatePresence>
               </div>
 
-              {/* Password */}
-              <div className="space-y-2">
+                            <div className="space-y-2">
                 <div className="flex justify-between items-center">
                   <Label>Password</Label>
                   <Link
@@ -188,8 +181,7 @@ export default function SignIn() {
                 </AnimatePresence>
               </div>
 
-              {/* Submit */}
-              <Button
+                            <Button
                 type="submit"
                 disabled={isLoading}
                 className="w-full h-11 text-base font-medium"
@@ -197,8 +189,7 @@ export default function SignIn() {
                 {isLoading ? 'Signing in…' : 'Sign in'}
               </Button>
 
-              {/* Demo Credentials Section */}
-              <motion.div
+                            <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.15 }}
@@ -223,8 +214,7 @@ export default function SignIn() {
                 </Button>
               </motion.div>
 
-              {/* General error */}
-              <AnimatePresence>
+                            <AnimatePresence>
                 {errors.general && (
                   <motion.p
                     initial={{ opacity: 0 }}

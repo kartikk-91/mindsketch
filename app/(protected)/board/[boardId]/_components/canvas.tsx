@@ -4,7 +4,7 @@
 import { useEffect } from "react";
 
 import { useCallback, useMemo, useState } from "react";
-import { Camera, CanvasMode, CanvasState, Color, LayerType, Point, Side, XYWH, Layer } from "@/types/canvas";
+import { Camera, CanvasMode, CanvasState, Color, LayerType, Point, Side, XYWH, Layer, ShapeLayer, ShapeType } from "@/types/canvas";
 
 
 import { Info } from "./info";
@@ -149,6 +149,34 @@ export const Canvas = ({ boardId }: CanvasProps) => {
         },
         [canvasState]
     );
+
+    const insertShape = useMutation(
+        ({ storage, setMyPresence }, shape: ShapeType, position: Point) => {
+            const liveLayers = storage.get("layers");
+            if (liveLayers.size >= MAX_LAYERS) return;
+
+            const id = nanoid();
+
+            const layer = new LiveObject<ShapeLayer>({
+                type: LayerType.Shape,
+                shape,
+                x: position.x,
+                y: position.y,
+                width: 120,
+                height: 80,
+                fill: lastUsedColor,
+                stroke: undefined,
+                strokeWidth: 2,
+            });
+
+            storage.get("layerIds").push(id);
+            liveLayers.set(id, layer);
+            setMyPresence({ selection: [id] }, { addToHistory: true });
+            setCanvasState({ mode: CanvasMode.None });
+        },
+        [lastUsedColor]
+    );
+
 
 
     const translateSelectedLayers = useMutation(({ storage, self }, point: Point) => {
@@ -341,11 +369,23 @@ export const Canvas = ({ boardId }: CanvasProps) => {
                 canvasState.layertype === LayerType.Ellipse
             ) {
                 insertLayer(canvasState.layertype, point);
-            } else if (canvasState.layertype === LayerType.Image &&
-                canvasState.imageSrc) {
+            }
+
+            if (canvasState.layertype === LayerType.Shape) {
+                insertShape(
+                    (canvasState as any).shape,
+                    point
+                );
+            }
+
+            if (
+                canvasState.layertype === LayerType.Image &&
+                canvasState.imageSrc
+            ) {
                 insertImageLayer(point);
             }
         }
+
         else {
             setCanvasState({ mode: CanvasMode.None });
         }

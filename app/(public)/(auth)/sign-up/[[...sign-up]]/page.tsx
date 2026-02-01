@@ -19,7 +19,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 
-/* ================= TYPES ================= */
+
 
 type ErrorKey =
   | "firstName"
@@ -39,14 +39,14 @@ type FieldTuple = [
   ErrorKey
 ];
 
-/* ================= PAGE ================= */
+
 
 export default function Page() {
   const { isLoaded, signUp, setActive } = useSignUp();
   const { signIn } = useSignIn();
   const router = useRouter();
 
-  /* ================= STATE ================= */
+  
 
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -64,7 +64,7 @@ export default function Page() {
 
   if (!signUp || !signIn) return null;
 
-  /* ================= VALIDATION ================= */
+  
 
   const validateForm = () => {
     const newErrors: Errors = {};
@@ -84,7 +84,7 @@ export default function Page() {
     return Object.keys(newErrors).length === 0;
   };
 
-  /* ================= SUBMIT ================= */
+  
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -140,7 +140,7 @@ export default function Page() {
     }
   };
 
-  /* ================= VERIFY ================= */
+  
 
   const handleVerify = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -171,7 +171,7 @@ export default function Page() {
     setSuccessMessage("Verification code sent.");
   };
 
-  /* ================= VERIFY UI ================= */
+  
 
   if (verifying) {
     return (
@@ -248,7 +248,7 @@ export default function Page() {
     );
   }
 
-  /* ================= SIGNUP UI ================= */
+  
 
   return (
     <div className="relative min-h-screen flex items-center justify-center px-4 overflow-hidden bg-gradient-to-br from-slate-50 via-slate-100 to-slate-50">

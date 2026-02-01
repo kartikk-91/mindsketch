@@ -7,11 +7,9 @@ const Footer = () => {
   return (
     <footer className="border-t border-stroke bg-white">
       <div className="mx-auto max-w-c-1390 px-4 sm:px-6 md:px-8 2xl:px-0">
-        {/* Footer Top */}
-        <div className="py-16 sm:py-20 lg:py-25">
+                <div className="py-16 sm:py-20 lg:py-25">
           <div className="flex flex-col gap-12 lg:flex-row lg:justify-between lg:gap-0">
-            {/* Logo + tagline */}
-            <motion.div
+                        <motion.div
               variants={{
                 hidden: { opacity: 0, y: -20 },
                 visible: { opacity: 1, y: 0 },
@@ -36,10 +34,8 @@ const Footer = () => {
               </p>
             </motion.div>
 
-            {/* Links */}
-            <div className="flex w-full flex-col gap-12 md:flex-row md:justify-between lg:w-2/3 xl:w-7/12">
-              {/* Quick Links */}
-              <motion.div
+                        <div className="flex w-full flex-col gap-12 md:flex-row md:justify-between lg:w-2/3 xl:w-7/12">
+                            <motion.div
                 variants={{
                   hidden: { opacity: 0, y: -20 },
                   visible: { opacity: 1, y: 0 },
@@ -68,8 +64,7 @@ const Footer = () => {
                 </ul>
               </motion.div>
 
-              {/* Support */}
-              <motion.div
+                            <motion.div
                 variants={{
                   hidden: { opacity: 0, y: -20 },
                   visible: { opacity: 1, y: 0 },
@@ -100,8 +95,7 @@ const Footer = () => {
                 </ul>
               </motion.div>
 
-              {/* Newsletter */}
-              <motion.div
+                            <motion.div
                 variants={{
                   hidden: { opacity: 0, y: -20 },
                   visible: { opacity: 1, y: 0 },
@@ -138,8 +132,7 @@ const Footer = () => {
           </div>
         </div>
 
-        {/* Footer Bottom */}
-        <div className="flex flex-col gap-6 border-t border-stroke py-7 lg:flex-row lg:items-center lg:justify-between">
+                <div className="flex flex-col gap-6 border-t border-stroke py-7 lg:flex-row lg:items-center lg:justify-between">
           <p className="text-center lg:text-left">
             &copy; {new Date().getFullYear()} MindSketch. All rights reserved
           </p>

@@ -121,8 +121,7 @@ const ShareActions = ({ id }: ShareActionProps) => {
 
   return (
     <div className="hidden md:flex absolute top-3 right-3 z-50 h-12 items-center gap-2">
-      {/* Insight Button */}
-      <div className="relative">
+            <div className="relative">
         <button
           onClick={handleExplainFrame}
           aria-label="Show frame insight"
@@ -184,8 +183,7 @@ const ShareActions = ({ id }: ShareActionProps) => {
               </button>
             </div>
 
-            {/* Content */}
-            <div className="max-h-72 overflow-y-auto px-4 py-3 text-sm text-neutral-700 leading-relaxed">
+                        <div className="max-h-72 overflow-y-auto px-4 py-3 text-sm text-neutral-700 leading-relaxed">
               {loadingExplain ? (
                 <div className="space-y-2 animate-pulse">
                   <div className="h-3 w-3/4 rounded bg-neutral-200" />
@@ -199,8 +197,7 @@ const ShareActions = ({ id }: ShareActionProps) => {
               )}
             </div>
 
-            {/* Footer */}
-            <div className="flex items-center justify-end px-4 py-2 border-t bg-neutral-50">
+                        <div className="flex items-center justify-end px-4 py-2 border-t bg-neutral-50">
               {speaking ? (
                 <button
                   onClick={handleStopSpeak}
@@ -224,8 +221,7 @@ const ShareActions = ({ id }: ShareActionProps) => {
         )}
       </div>
 
-      {/* Export / Share */}
-      <div className="hidden md:flex h-12 items-center gap-1 rounded-xl bg-white/90 backdrop-blur border border-neutral-200 shadow-sm px-1.5">
+            <div className="hidden md:flex h-12 items-center gap-1 rounded-xl bg-white/90 backdrop-blur border border-neutral-200 shadow-sm px-1.5">
         <button
           onClick={handleExportPNG}
           disabled={exporting}

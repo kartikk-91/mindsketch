@@ -3,9 +3,9 @@ import { RectangleLayer } from "@/types/canvas";
 
 interface RectangleProps {
     id: string;
-    layer:RectangleLayer;
-    onPointerDown:(e:React.PointerEvent,id:string)=>void;
-    selectionColor?:string;
+    layer: RectangleLayer;
+    onPointerDown: (e: React.PointerEvent, id: string) => void;
+    selectionColor?: string;
 }
 
 export const Rectangle = ({
@@ -13,22 +13,29 @@ export const Rectangle = ({
     layer,
     onPointerDown,
     selectionColor,
-}:RectangleProps) => {
-    const {x,y,width,height,fill}=layer;
+}: RectangleProps) => {
+    const { x, y, width, height, fill, stroke, strokeWidth } = layer;
+
     return (
         <rect
             className="drop-shadow-md"
-            onPointerDown={(e)=>onPointerDown(e,id)}
+            onPointerDown={(e) => onPointerDown(e, id)}
             style={{
-                transform:`translate(${x}px,${y}px)`,
+                transform: `translate(${x}px,${y}px)`,
             }}
             x={0}
             y={0}
             width={width}
             height={height}
-            strokeWidth={2}
-            fill={fill?ColorToCSS(fill):"#000"}
-            stroke={selectionColor || "transparent"}
+            fill={fill ? ColorToCSS(fill) : "none"}
+            stroke={
+                selectionColor
+                    ? selectionColor
+                    : stroke
+                    ? ColorToCSS(stroke)
+                    : "transparent"
+            }
+            strokeWidth={strokeWidth ?? 2}
         />
-    )
-}
+    );
+};

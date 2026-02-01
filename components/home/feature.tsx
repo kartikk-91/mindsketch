@@ -75,8 +75,7 @@ const Feature = () => {
           Everything you need to brainstorm, plan, and collaborate visually in real time, without friction.
         </div>
 
-        {/* GRID */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 w-full gap-12 max-w-7xl mt-12">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 w-full gap-12 max-w-7xl mt-12">
           {features.map((item, index) => {
             const Icon = item.icon;
 

@@ -54,8 +54,7 @@ export const remove=mutation({
         if(!identity){
             throw new Error("Not authenticated");
         }
-        // TODO: Check if the user is deleting favorite board
-        const userId=identity.subject;
+               const userId=identity.subject;
         const existingFavorite=await ctx.db.query("userFavorites")
             .withIndex("by_user_board",(q)=>
                 q.eq("userId",userId)
@@ -148,8 +147,7 @@ export const unfavorite=mutation({
         .withIndex("by_user_board",(q)=>
             q.eq("userId",userId)
              .eq("boardId",board._id)
-            //  Check if org id needed
-        )
+                   )
         .unique();
 
         if(!existingFavorite){

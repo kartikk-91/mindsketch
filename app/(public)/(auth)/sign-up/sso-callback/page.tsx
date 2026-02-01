@@ -14,9 +14,7 @@ export default function SSOCallbackPage() {
       try {
         const result = await clerk.handleRedirectCallback({});
 
-        // Clerk may or may not return the session id explicitly,
-        // but the session IS created at this point.
-        if ((result as any)?.createdSessionId) {
+                      if ((result as any)?.createdSessionId) {
           await clerk.setActive({
             session: (result as any).createdSessionId,
           });

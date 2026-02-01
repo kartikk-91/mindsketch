@@ -76,8 +76,7 @@ export const Actions = ({
         onClick={(e) => e.stopPropagation()}
         className="w-60 bg-white"
       >
-        {/* Copy link */}
-        <DropdownMenuItem
+                <DropdownMenuItem
           onClick={handleCopyLink}
           className="p-3 cursor-pointer"
         >
@@ -88,8 +87,7 @@ export const Actions = ({
        
         
 
-        {/* Rename */}
-        <DropdownMenuItem
+                <DropdownMenuItem
           onClick={() => onOpen(id, title)}
           className="p-3 cursor-pointer"
         >
@@ -97,8 +95,7 @@ export const Actions = ({
           Rename
         </DropdownMenuItem>
 
-        {/* Delete */}
-        <ConfirmModal
+                <ConfirmModal
           onConfirm={onDelete}
           disabled={pending}
           header="Delete board?"

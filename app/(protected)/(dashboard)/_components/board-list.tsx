@@ -19,9 +19,7 @@ interface BoardListProps {
 export const BoardList = ({ orgId, query }: BoardListProps) => {
   const data = useQuery(api.boards.get, { orgId, ...query });
 
-  // data will never be undefined even if there is an error or is empty
-  // if it is empty, convex will return null
-  if (data === undefined) {
+    if (data === undefined) {
     return (
       <div>
         <h2 className="text-3xl">
