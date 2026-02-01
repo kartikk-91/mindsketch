@@ -16,7 +16,8 @@ export enum LayerType {
     Ellipse,
     Path,
     Image,
-    Shape,}
+    Shape,
+}
 
 
 export enum ShapeType {
@@ -41,11 +42,12 @@ export type ShapeLayer = {
     width: number;
     height: number;
 
-       fill?: Color | null;        stroke?: Color;
+    fill?: Color;
+    stroke?: Color;
     strokeWidth?: number;
     dashed?: boolean;
 
-       rotation?: number;
+    rotation?: number;
     value?: string;
 };
 
@@ -57,7 +59,7 @@ export type RectangleLayer = {
     y: number;
     width: number;
     height: number;
-    fill?: Color;             stroke?: Color;           strokeWidth?: number;     value?: string;
+    fill?: Color; stroke?: Color; strokeWidth?: number; value?: string;
 };
 
 export type EllipseLayer = {
@@ -67,7 +69,7 @@ export type EllipseLayer = {
     width: number;
     height: number;
     fill?: Color;
-    stroke?: Color;           strokeWidth?: number;     value?: string;
+    stroke?: Color; strokeWidth?: number; value?: string;
 };
 
 
@@ -133,51 +135,58 @@ export enum Side {
 }
 
 export type CanvasState =
-  | {
-      mode: CanvasMode.None;
+    | {
+        mode: CanvasMode.None;
     }
-  | {
-      mode: CanvasMode.Pressing;
-      origin: Point;
+    | {
+        mode: CanvasMode.Pressing;
+        origin: Point;
     }
-  | {
-      mode: CanvasMode.SelectionNet;
-      origin: Point;
-      current?: Point;
+    | {
+        mode: CanvasMode.SelectionNet;
+        origin: Point;
+        current?: Point;
     }
-  | {
-      mode: CanvasMode.Translating;
-      current: Point;
+    | {
+        mode: CanvasMode.Translating;
+        current: Point;
     }
-  | {
-      mode: CanvasMode.Inserting;
-      layertype: LayerType.Image;
-      imageSrc: string;
-      current?: Point;
+    | {
+        mode: CanvasMode.Inserting;
+        layertype: LayerType.Image;
+        imageSrc: string;
+        current?: Point;
     }
-  | {
-      mode: CanvasMode.Inserting;
-      layertype: LayerType.Shape;
-      shape: ShapeType;
-      current?: Point;
+    | {
+        mode: CanvasMode.Inserting;
+        layertype: LayerType.Shape;
+        shape: ShapeType;
+        current?: Point;
     }
-  | {
-      mode: CanvasMode.Inserting;
-      layertype:
+    | {
+        mode: CanvasMode.Inserting;
+        layertype:
         | LayerType.Ellipse
         | LayerType.Rectangle
         | LayerType.Text
         | LayerType.Note
         | LayerType.Path;
-      current?: Point;
+        current?: Point;
     }
-  | {
-      mode: CanvasMode.Resizing;
-      intialBounds: XYWH;
-      corner: Side;
+    | {
+        mode: CanvasMode.Resizing;
+        intialBounds: XYWH;
+        corner: Side;
     }
-  | {
-      mode: CanvasMode.Pencil;
+    | {
+        mode: CanvasMode.Rotating;
+        center: Point;
+        startAngle: number;
+        initialRotation: number;
+    }
+
+    | {
+        mode: CanvasMode.Pencil;
     };
 
 export enum CanvasMode {
@@ -188,6 +197,7 @@ export enum CanvasMode {
     Inserting,
     Resizing,
     Pencil,
+    Rotating,
 }
 
 

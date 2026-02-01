@@ -53,6 +53,13 @@ export const Canvas = ({ boardId }: CanvasProps) => {
     const canUndo = useCanUndo();
     const canRedo = useCanRedo();
     const deleteLayers = useDeleteLayers();
+    const selection = useSelf((me) => me.presence.selection);
+
+    const selectedLayer = useStorage((root) => {
+        const id = selection?.[0];
+        return id ? root.layers.get(id) : null;
+    });
+
 
     useEffect(() => {
         function onKeyDown(e: KeyboardEvent) {
@@ -167,7 +174,9 @@ export const Canvas = ({ boardId }: CanvasProps) => {
                 fill: lastUsedColor,
                 stroke: undefined,
                 strokeWidth: 2,
+                rotation: 0,
             });
+
 
             storage.get("layerIds").push(id);
             liveLayers.set(id, layer);
@@ -283,17 +292,108 @@ export const Canvas = ({ boardId }: CanvasProps) => {
         })
     }, [lastUsedColor])
 
-    const resizeSelectedLayer = useMutation(({ storage, self }, point: Point) => {
-        if (canvasState.mode !== CanvasMode.Resizing) {
-            return;
-        }
-        const bounds = resizeBounds(canvasState.intialBounds, canvasState.corner, point);
-        const liveLayers = storage.get('layers');
-        const layer = liveLayers.get(self.presence.selection[0]);
-        if (layer) {
-            layer.update(bounds);
+    function rotatePointAround(
+        px: number,
+        py: number,
+        cx: number,
+        cy: number,
+        angleDeg: number
+      ) {
+        const rad = (angleDeg * Math.PI) / 180;
+        const cos = Math.cos(rad);
+        const sin = Math.sin(rad);
+      
+        const dx = px - cx;
+        const dy = py - cy;
+      
+        return {
+          x: cx + dx * cos - dy * sin,
+          y: cy + dx * sin + dy * cos,
         };
-    }, [canvasState])
+      }
+      
+
+      const resizeSelectedLayer = useMutation(
+        ({ storage, self }, point: Point) => {
+          if (canvasState.mode !== CanvasMode.Resizing) return;
+      
+          const liveLayers = storage.get("layers");
+          const id = self.presence.selection[0];
+          const layer = liveLayers.get(id);
+          if (!layer) return;
+      
+                   let rotation = 0;
+          if (layer.get("type") === LayerType.Shape) {
+            const shapeLayer = layer as unknown as LiveObject<ShapeLayer>;
+            rotation = Number(shapeLayer.get("rotation") ?? 0);
+          }
+      
+          const { x, y, width, height } = canvasState.intialBounds;
+      
+                   const cx = x + width / 2;
+          const cy = y + height / 2;
+      
+                   const localPoint = rotatePointAround(
+            point.x,
+            point.y,
+            cx,
+            cy,
+            -rotation
+          );
+      
+                   const bounds = resizeBounds(
+            canvasState.intialBounds,
+            canvasState.corner,
+            localPoint
+          );
+      
+          layer.update(bounds);
+        },
+        [canvasState]
+      );
+      
+
+
+    const rotateSelectedLayer = useMutation(
+        ({ storage, self }, rotation: number) => {
+            const id = self.presence.selection[0];
+            if (!id) return;
+
+            const layer = storage.get("layers").get(id);
+            if (!layer) return;
+
+            layer.update({ rotation });
+        },
+        []
+    );
+
+
+
+    const onRotateHandlePointerDown = useCallback(
+        (e: React.PointerEvent, cx: number, cy: number) => {
+            e.stopPropagation();
+            history.pause();
+
+            const point = pointerEventToCanvasPoint(e, camera);
+
+            const initialRotation =
+                selectedLayer && "rotation" in selectedLayer
+                    ? selectedLayer.rotation ?? 0
+                    : 0;
+
+            const startAngle =
+                Math.atan2(point.y - cy, point.x - cx) * (180 / Math.PI);
+
+            setCanvasState({
+                mode: CanvasMode.Rotating,
+                center: { x: cx, y: cy },
+                startAngle,
+                initialRotation,
+            });
+        },
+        [camera, history, selectedLayer]
+    );
+
 
 
     const onResizeHandlePointerDown = useCallback((corner: Side, intialBounds: XYWH) => {
@@ -324,6 +424,18 @@ export const Canvas = ({ boardId }: CanvasProps) => {
         else if (canvasState.mode === CanvasMode.Pencil) {
             continueDrawing(current, e);
         }
+        else if (canvasState.mode === CanvasMode.Rotating) {
+            const { center, startAngle, initialRotation } = canvasState;
+
+            const angle =
+                Math.atan2(current.y - center.y, current.x - center.x) *
+                (180 / Math.PI);
+
+            const delta = angle - startAngle;
+
+            rotateSelectedLayer(initialRotation + delta);
+        }
+
         setMyPresence({ cursor: current });
         setCanvasState((prev) =>
             prev.mode === CanvasMode.Inserting
@@ -385,10 +497,13 @@ export const Canvas = ({ boardId }: CanvasProps) => {
                 insertImageLayer(point);
             }
         }
-
+        else if (canvasState.mode === CanvasMode.Rotating) {
+            setCanvasState({ mode: CanvasMode.None });
+        }
         else {
             setCanvasState({ mode: CanvasMode.None });
         }
+
         history.resume();
     }, [camera, canvasState, history, insertLayer, unselectLayers, insertPath, setCanvasState]);
 
@@ -530,6 +645,12 @@ export const Canvas = ({ boardId }: CanvasProps) => {
                         }
                         <SelectionBox
                             onResizeHandlePointerDown={onResizeHandlePointerDown}
+                            onRotateHandlePointerDown={onRotateHandlePointerDown}
+                            rotation={
+                                selectedLayer && "rotation" in selectedLayer
+                                    ? selectedLayer.rotation ?? 0
+                                    : 0
+                            }
                         />
                         {
                             canvasState.mode === CanvasMode.SelectionNet && canvasState.current != null && (

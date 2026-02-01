@@ -25,10 +25,20 @@ export const ShapeRenderer = ({
     strokeWidth = 2,
     dashed,
     shape,
+    rotation = 0,
   } = layer;
 
-  const fillColor = fill ? ColorToCSS(fill) : "none";
-  const strokeColor = stroke ? ColorToCSS(stroke) : "currentColor";
+
+  const fillColor =
+  fill && fill.r === -1 && fill.g === -1 && fill.b === -1
+    ? "transparent"
+    : fill
+    ? ColorToCSS(fill)
+    : "transparent";
+
+  const strokeColor = stroke ? ColorToCSS(stroke) : "transparent";
+  const cx = x + width / 2;
+  const cy = y + height / 2;
 
 
   const baseProps = {
@@ -38,16 +48,17 @@ export const ShapeRenderer = ({
     strokeWidth,
     strokeDasharray: dashed ? "6 4" : undefined,
     vectorEffect: "non-scaling-stroke" as const,
+    pointerEvents: "all" as const,
   };
 
   const selectionProps = selectionColor
     ? {
-        fill: "none",
-        stroke: selectionColor,
-        strokeWidth: strokeWidth + 2,
-        opacity: 0.9,
-        pointerEvents: "none" as const,
-      }
+      fill: "none",
+      stroke: selectionColor,
+      strokeWidth: strokeWidth + 2,
+      opacity: 0.9,
+      pointerEvents: "none" as const,
+    }
     : null;
 
   const renderShape = (props: any) => {
@@ -197,9 +208,9 @@ export const ShapeRenderer = ({
   };
 
   return (
-    <>
+    <g transform={`rotate(${rotation} ${cx} ${cy})`}>
       {renderShape(baseProps)}
       {selectionProps && renderShape(selectionProps)}
-    </>
-  );
+    </g>
+  );  
 };
