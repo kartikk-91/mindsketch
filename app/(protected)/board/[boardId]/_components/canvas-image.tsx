@@ -12,15 +12,26 @@ interface CanvasImageProps {
 
 export const CanvasImage = memo(
     ({ id, layer, onPointerDown, selectionColor }: CanvasImageProps) => {
+        const {
+            x,
+            y,
+            width,
+            height,
+            rotation = 0,
+        } = layer;
+
+        const cx = x + width / 2;
+        const cy = y + height / 2;
+
         return (
             <g
-                transform={`translate(${layer.x}, ${layer.y})`}
+                transform={`rotate(${rotation} ${cx} ${cy}) translate(${x}, ${y})`}
                 onPointerDown={(e) => onPointerDown(e, id)}
             >
                 <image
                     href={layer.src}
-                    width={layer.width}
-                    height={layer.height}
+                    width={width}
+                    height={height}
                     preserveAspectRatio="none"
                     role="presentation"
                     aria-label=""
@@ -28,8 +39,8 @@ export const CanvasImage = memo(
 
                 {selectionColor && (
                     <rect
-                        width={layer.width}
-                        height={layer.height}
+                        width={width}
+                        height={height}
                         fill="none"
                         stroke={selectionColor}
                         strokeWidth={2}

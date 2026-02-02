@@ -1,5 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { ShapeLayer, ShapeType } from "@/types/canvas";
+"use client";
+
+import { ShapeLayer, ShapeType, Color } from "@/types/canvas";
 import { ColorToCSS } from "@/lib/utils";
 
 interface ShapeRendererProps {
@@ -8,6 +10,11 @@ interface ShapeRendererProps {
   onPointerDown: (e: React.PointerEvent, id: string) => void;
   selectionColor?: string;
 }
+
+const BLACK = "#000000";
+
+const isTransparentColor = (c?: Color) =>
+  !c || (c.r === -1 && c.g === -1 && c.b === -1);
 
 export const ShapeRenderer = ({
   id,
@@ -28,24 +35,41 @@ export const ShapeRenderer = ({
     rotation = 0,
   } = layer;
 
-
-  const fillColor =
-  fill && fill.r === -1 && fill.g === -1 && fill.b === -1
-    ? "transparent"
-    : fill
-    ? ColorToCSS(fill)
-    : "transparent";
-
-  const strokeColor = stroke ? ColorToCSS(stroke) : "transparent";
   const cx = x + width / 2;
   const cy = y + height / 2;
 
+  
+
+  const resolvedFill = isTransparentColor(fill)
+    ? "transparent"
+    : ColorToCSS(fill as Color);
+
+  const requiresStroke =
+    shape === ShapeType.Line || shape === ShapeType.Arrow;
+
+  let resolvedStroke: string;
+
+  if (stroke) {
+    resolvedStroke = ColorToCSS(stroke);
+  } else if (requiresStroke) {
+   
+    resolvedStroke = BLACK;
+  } else if (resolvedFill === "transparent") {
+   
+    resolvedStroke = BLACK;
+  } else {
+    resolvedStroke = "transparent";
+  }
+
+  const finalStrokeWidth = Math.max(strokeWidth, 1);
+
+  
 
   const baseProps = {
     onPointerDown: (e: React.PointerEvent) => onPointerDown(e, id),
-    fill: fillColor,
-    stroke: strokeColor,
-    strokeWidth,
+    fill: resolvedFill,
+    stroke: resolvedStroke,
+    strokeWidth: finalStrokeWidth,
     strokeDasharray: dashed ? "6 4" : undefined,
     vectorEffect: "non-scaling-stroke" as const,
     pointerEvents: "all" as const,
@@ -53,13 +77,15 @@ export const ShapeRenderer = ({
 
   const selectionProps = selectionColor
     ? {
-      fill: "none",
-      stroke: selectionColor,
-      strokeWidth: strokeWidth + 2,
-      opacity: 0.9,
-      pointerEvents: "none" as const,
-    }
+        fill: "none",
+        stroke: selectionColor,
+        strokeWidth: finalStrokeWidth + 2,
+        opacity: 0.9,
+        pointerEvents: "none" as const,
+      }
     : null;
+
+  
 
   const renderShape = (props: any) => {
     switch (shape) {
@@ -70,8 +96,8 @@ export const ShapeRenderer = ({
         return (
           <ellipse
             {...props}
-            cx={x + width / 2}
-            cy={y + height / 2}
+            cx={cx}
+            cy={cy}
             rx={width / 2}
             ry={height / 2}
           />
@@ -88,30 +114,46 @@ export const ShapeRenderer = ({
           />
         );
 
-      case ShapeType.Arrow:
+      case ShapeType.Arrow: {
+        const x1 = x;
+        const y1 = y;
+        const x2 = x + width;
+        const y2 = y + height;
+
+        const headLength = 12;
+        const angle = Math.atan2(y2 - y1, x2 - x1);
+
+        const hx1 = x2 - headLength * Math.cos(angle - Math.PI / 6);
+        const hy1 = y2 - headLength * Math.sin(angle - Math.PI / 6);
+        const hx2 = x2 - headLength * Math.cos(angle + Math.PI / 6);
+        const hy2 = y2 - headLength * Math.sin(angle + Math.PI / 6);
+
         return (
           <path
             {...props}
             fill="none"
+            stroke={props.stroke || BLACK}
             d={`
-              M ${x} ${y}
-              L ${x + width} ${y + height}
-              L ${x + width - 10} ${y + height - 5}
-              M ${x + width} ${y + height}
-              L ${x + width - 5} ${y + height - 10}
+              M ${x1} ${y1}
+              L ${x2} ${y2}
+              M ${x2} ${y2}
+              L ${hx1} ${hy1}
+              M ${x2} ${y2}
+              L ${hx2} ${hy2}
             `}
           />
         );
+      }
 
       case ShapeType.Diamond:
         return (
           <polygon
             {...props}
             points={`
-              ${x + width / 2},${y}
-              ${x + width},${y + height / 2}
-              ${x + width / 2},${y + height}
-              ${x},${y + height / 2}
+              ${cx},${y}
+              ${x + width},${cy}
+              ${cx},${y + height}
+              ${x},${cy}
             `}
           />
         );
@@ -121,7 +163,7 @@ export const ShapeRenderer = ({
           <polygon
             {...props}
             points={`
-              ${x + width / 2},${y}
+              ${cx},${y}
               ${x + width},${y + height}
               ${x},${y + height}
             `}
@@ -176,9 +218,15 @@ export const ShapeRenderer = ({
       case ShapeType.Cylinder:
         return (
           <>
-            <ellipse {...props} cx={x + width / 2} cy={y} rx={width / 2} ry={height * 0.15} />
+            <ellipse {...props} cx={cx} cy={y} rx={width / 2} ry={height * 0.15} />
             <rect {...props} x={x} y={y} width={width} height={height} />
-            <ellipse {...props} cx={x + width / 2} cy={y + height} rx={width / 2} ry={height * 0.15} />
+            <ellipse
+              {...props}
+              cx={cx}
+              cy={y + height}
+              rx={width / 2}
+              ry={height * 0.15}
+            />
           </>
         );
 
@@ -212,5 +260,5 @@ export const ShapeRenderer = ({
       {renderShape(baseProps)}
       {selectionProps && renderShape(selectionProps)}
     </g>
-  );  
+  );
 };

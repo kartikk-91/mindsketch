@@ -81,17 +81,36 @@ export type TextLayer = {
     height: number;
     fill: Color;
     value?: string;
+    rotation?: number;
+    textAlign: "left" | "center" | "right";
 };
 
+export type NoteFontFamily =
+  | "kalam"
+  | "inter"
+  | "nunito"
+  | "mono"
+  | "serif";
+
 export type NoteLayer = {
-    type: LayerType.Note;
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-    fill: Color;
-    value?: string;
+  type: LayerType.Note;
+
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+
+  fill: Color;
+  value: string;
+  rotation?: number;
+
+  fontFamily: NoteFontFamily;
+  fontSize: number | "auto";
+  textAlign: "left" | "center" | "right";
+  verticalAlign: "top" | "center";
+  padding: number;
 };
+
 
 export type PathLayer = {
     type: LayerType.Path;
@@ -102,6 +121,7 @@ export type PathLayer = {
     fill: Color;
     points: number[][];
     value?: string;
+    rotation?: number;
 };
 
 
@@ -113,6 +133,7 @@ export type ImageLayer = {
     height: number;
     src: string;
     value?: string;
+    rotation?: number;
 };
 
 export type Point = {

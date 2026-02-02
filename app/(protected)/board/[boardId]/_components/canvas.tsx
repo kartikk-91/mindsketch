@@ -42,6 +42,31 @@ export const Canvas = ({ boardId }: CanvasProps) => {
         g: 232,
         b: 145,
     });
+    const BLACK: Color = { r: 0, g: 0, b: 0 };
+    ;
+
+    function resolveColor(
+        color?: Color,
+        setColor?: (c: Color) => void
+    ): Color {
+        if (
+            !color ||
+            (color.r === -1 && color.g === -1 && color.b === -1)
+        ) {
+            setColor?.(BLACK);
+            return BLACK;
+        }
+
+        return color;
+    }
+
+
+    type ClipboardItem = {
+        layer: Layer;
+    };
+
+    const [clipboard, setClipboard] = useState<ClipboardItem[] | null>(null);
+
     useDisableScrollBounce();
     const onWheel = useCallback((e: React.WheelEvent) => {
         setCamera((camera) => ({
@@ -60,16 +85,81 @@ export const Canvas = ({ boardId }: CanvasProps) => {
         return id ? root.layers.get(id) : null;
     });
 
+    const copySelectedLayers = useMutation(({ storage, self }) => {
+        const selection = self.presence.selection;
+        if (!selection || selection.length === 0) return;
+
+        const liveLayers = storage.get("layers");
+
+        const copied: ClipboardItem[] = [];
+
+        for (const id of selection) {
+            const layer = liveLayers.get(id);
+            if (!layer) continue;
+
+
+            copied.push({
+                layer: layer.toObject() as Layer,
+            });
+        }
+
+        setClipboard(copied);
+    }, []);
+
+    const pasteLayers = useMutation(
+        ({ storage, setMyPresence }) => {
+            if (!clipboard || clipboard.length === 0) return;
+
+            const liveLayers = storage.get("layers");
+            const liveLayerIds = storage.get("layerIds");
+
+            if (liveLayers.size + clipboard.length > MAX_LAYERS) return;
+
+            const OFFSET = 20;
+            const newSelection: string[] = [];
+
+            for (const item of clipboard) {
+                const id = nanoid();
+
+                const clonedLayer: Layer = {
+                    ...item.layer,
+                    x: item.layer.x + OFFSET,
+                    y: item.layer.y + OFFSET,
+                };
+
+                liveLayerIds.push(id);
+                liveLayers.set(id, new LiveObject(clonedLayer));
+                newSelection.push(id);
+            }
+
+            setMyPresence({ selection: newSelection }, { addToHistory: true });
+        },
+        [clipboard]
+    );
+
 
     useEffect(() => {
         function onKeyDown(e: KeyboardEvent) {
+            const isMod = e.ctrlKey || e.metaKey;
+
+            if (isMod && e.key.toLowerCase() === "d") {
+                e.preventDefault();
+                
+                copySelectedLayers();
+                pasteLayers();
+                return;
+            }
+            
+
             switch (e.key) {
                 case "Escape":
                     setCanvasState({ mode: CanvasMode.None });
                     break;
+
                 case "Delete":
                     deleteLayers();
                     break;
+
                 case "z":
                     if (e.ctrlKey || e.metaKey) {
                         if (e.shiftKey) {
@@ -87,9 +177,11 @@ export const Canvas = ({ boardId }: CanvasProps) => {
                     break;
             }
         }
+
         document.addEventListener("keydown", onKeyDown);
         return () => document.removeEventListener("keydown", onKeyDown);
-    }, [deleteLayers, history]);
+    }, [copySelectedLayers, pasteLayers, deleteLayers, history]);
+
 
     const insertLayer = useMutation(
         (
@@ -118,7 +210,7 @@ export const Canvas = ({ boardId }: CanvasProps) => {
                 y: position.y,
                 width: 100,
                 height: 100,
-                fill: lastUsedColor,
+                fill: resolveColor(lastUsedColor),
             });
 
             liveLayerIds.push(layerId);
@@ -171,7 +263,7 @@ export const Canvas = ({ boardId }: CanvasProps) => {
                 y: position.y,
                 width: 120,
                 height: 80,
-                fill: lastUsedColor,
+                fill: resolveColor(lastUsedColor),
                 stroke: undefined,
                 strokeWidth: 2,
                 rotation: 0,
@@ -276,7 +368,7 @@ export const Canvas = ({ boardId }: CanvasProps) => {
             id,
             new LiveObject(penPointsToPathLayer(
                 pencilDraft,
-                lastUsedColor,
+                resolveColor(lastUsedColor),
             ))
         );
         const liveLayerIds = storage.get('layerIds');
@@ -288,7 +380,7 @@ export const Canvas = ({ boardId }: CanvasProps) => {
     const startDrawing = useMutation(({ setMyPresence }, point: Point, pressure: number) => {
         setMyPresence({
             pencilDraft: [[point.x, point.y, pressure]],
-            penColor: lastUsedColor,
+            penColor: resolveColor(lastUsedColor),
         })
     }, [lastUsedColor])
 
@@ -298,60 +390,60 @@ export const Canvas = ({ boardId }: CanvasProps) => {
         cx: number,
         cy: number,
         angleDeg: number
-      ) {
+    ) {
         const rad = (angleDeg * Math.PI) / 180;
         const cos = Math.cos(rad);
         const sin = Math.sin(rad);
-      
+
         const dx = px - cx;
         const dy = py - cy;
-      
-        return {
-          x: cx + dx * cos - dy * sin,
-          y: cy + dx * sin + dy * cos,
-        };
-      }
-      
 
-      const resizeSelectedLayer = useMutation(
+        return {
+            x: cx + dx * cos - dy * sin,
+            y: cy + dx * sin + dy * cos,
+        };
+    }
+
+
+    const resizeSelectedLayer = useMutation(
         ({ storage, self }, point: Point) => {
-          if (canvasState.mode !== CanvasMode.Resizing) return;
-      
-          const liveLayers = storage.get("layers");
-          const id = self.presence.selection[0];
-          const layer = liveLayers.get(id);
-          if (!layer) return;
-      
-                   let rotation = 0;
-          if (layer.get("type") === LayerType.Shape) {
-            const shapeLayer = layer as unknown as LiveObject<ShapeLayer>;
-            rotation = Number(shapeLayer.get("rotation") ?? 0);
-          }
-      
-          const { x, y, width, height } = canvasState.intialBounds;
-      
-                   const cx = x + width / 2;
-          const cy = y + height / 2;
-      
-                   const localPoint = rotatePointAround(
-            point.x,
-            point.y,
-            cx,
-            cy,
-            -rotation
-          );
-      
-                   const bounds = resizeBounds(
-            canvasState.intialBounds,
-            canvasState.corner,
-            localPoint
-          );
-      
-          layer.update(bounds);
+            if (canvasState.mode !== CanvasMode.Resizing) return;
+
+            const liveLayers = storage.get("layers");
+            const id = self.presence.selection[0];
+            const layer = liveLayers.get(id);
+            if (!layer) return;
+
+            let rotation = 0;
+            if (layer.get("type") === LayerType.Shape) {
+                const shapeLayer = layer as unknown as LiveObject<ShapeLayer>;
+                rotation = Number(shapeLayer.get("rotation") ?? 0);
+            }
+
+            const { x, y, width, height } = canvasState.intialBounds;
+
+            const cx = x + width / 2;
+            const cy = y + height / 2;
+
+            const localPoint = rotatePointAround(
+                point.x,
+                point.y,
+                cx,
+                cy,
+                -rotation
+            );
+
+            const bounds = resizeBounds(
+                canvasState.intialBounds,
+                canvasState.corner,
+                localPoint
+            );
+
+            layer.update(bounds);
         },
         [canvasState]
-      );
-      
+    );
+
 
 
     const rotateSelectedLayer = useMutation(
@@ -508,6 +600,9 @@ export const Canvas = ({ boardId }: CanvasProps) => {
     }, [camera, canvasState, history, insertLayer, unselectLayers, insertPath, setCanvasState]);
 
     const selections = useOthersMapped((other) => other.presence.selection);
+
+
+
 
     const onLayerPointerDown = useMutation(
         ({ self, setMyPresence }, e: React.PointerEvent, layerId: string) => {
@@ -667,7 +762,7 @@ export const Canvas = ({ boardId }: CanvasProps) => {
                         <CursorsPresence />
                         {pencilDraft != null && pencilDraft.length > 0 && (
                             <Path
-                                fill={ColorToCSS(lastUsedColor)}
+                                fill={ColorToCSS(resolveColor(lastUsedColor))}
                                 points={pencilDraft}
                                 x={0}
                                 y={0}
