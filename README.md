@@ -99,11 +99,14 @@ It combines an infinite canvas, smart drawing tools, and AI-powered insights to 
 Create a `.env.local` file and configure the following:
 
 ```env
-NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=
+LIVEBLOCKS_SECRET=
+CONVEX_DEPLOY_KEY=
 CLERK_SECRET_KEY=
-
-CONVEX_DEPLOYMENT=
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=
 NEXT_PUBLIC_CONVEX_URL=
+CONVEX_DEPLOYMENT=
+NEXT_PUBLIC_CLERK_SIGN_IN_URL=/sign-in
+GEMINI_API_KEY=
 ```
 
 ---
