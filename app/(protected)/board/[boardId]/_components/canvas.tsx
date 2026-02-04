@@ -23,6 +23,7 @@ import { Path } from "./path";
 import { useDisableScrollBounce } from "@/hooks/use-disable-scroll-bounce";
 import { useDeleteLayers } from "@/hooks/use-delete-layers";
 import ShareActions from "./share-actions";
+// import { useExportTemplate } from "@/hooks/use-export-template";
 
 
 const MAX_LAYERS = 100;
@@ -31,6 +32,10 @@ interface CanvasProps {
     boardId: string;
 }
 export const Canvas = ({ boardId }: CanvasProps) => {
+    // const exportTemplate = useExportTemplate();
+
+
+
     const layerIds = useStorage((root) => root.layerIds);
     const pencilDraft = useSelf((me) => me.presence.pencilDraft);
     const [canvasState, setCanvasState] = useState<CanvasState>({
@@ -144,12 +149,12 @@ export const Canvas = ({ boardId }: CanvasProps) => {
 
             if (isMod && e.key.toLowerCase() === "d") {
                 e.preventDefault();
-                
+
                 copySelectedLayers();
                 pasteLayers();
                 return;
             }
-            
+
 
             switch (e.key) {
                 case "Escape":
@@ -786,7 +791,23 @@ export const Canvas = ({ boardId }: CanvasProps) => {
 
                     </g>
                 </svg>
+
             </div>
+            {/* <button
+                onClick={exportTemplate}
+                style={{
+                    position: "fixed",
+                    bottom: 16,
+                    right: 16,
+                    background: "black",
+                    color: "white",
+                    padding: "8px 12px",
+                    borderRadius: 6,
+                    zIndex: 1000,
+                }}
+            >
+                Export Template (DEV)
+            </button> */}
         </main>
     )
 }

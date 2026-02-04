@@ -1,0 +1,383 @@
+{
+  "name": "Brainstorm",
+  "thumbnail": "brainstorm.png",
+  "snapshot": {
+    "layerIds": [
+      "CBsWsRAfxadTHEwyUzN1U",
+      "wg7Ewiu_I9xp4lv3uwAR9",
+      "QIkDs7jkQMnc1au-8dGPo",
+      "luLWwYZ8BsOSKZK30E9IU",
+      "Vrz2Fmj8xRt27Pra8kjMI",
+      "ZUrBgwk1w-URwJG3olu0D",
+      "odpxX5v3mlQjUjrWbTFT7",
+      "uiSOgCIkFRXwI7s9O0jWS",
+      "suZvfuk9xMRU-calGJaGd",
+      "CEOn4beIx5-2mNWZouEz2",
+      "2sxNY4HV81GYtOGDmJkrg",
+      "gTaKoUNdIR1BuOA8nHBXq",
+      "eV48kwDB3vwiFeJpVMj0G",
+      "l0H70d87f9CoO18IQ0fTM",
+      "XkBaQ-jaIdr_9OQgBaZka",
+      "RtAVAOCcyD191jLZmhey1",
+      "aZC66FXEwBu7hzrCgVyXb",
+      "007oBY5goI20ALW36frrn",
+      "NYtInyD6iTYdPSNwOCIU6",
+      "x4ejygI7NRA63gdMr2r0c",
+      "3vvBEzzTQmBFCyi0m2B6z",
+      "sOmsfxHUnWPSOF3IdR0RZ",
+      "RPF4aof-IiCDf6VTBfTV6",
+      "hHO19NnOVzLyJtKzK_2Z3",
+      "R350fDohrFqHrKszyzC7-",
+      "UyAxHjS2QO6e69vQ12C3r",
+      "lQE3oTCRh7vvBdLCme8oH",
+      "O955tCr8OsNqSijGne8U4"
+    ],
+    "layers": {
+      "luLWwYZ8BsOSKZK30E9IU": {
+        "type": 6,
+        "shape": 0,
+        "x": 916,
+        "y": 118,
+        "width": 245,
+        "height": 121,
+        "fill": {
+          "r": 145,
+          "g": 126,
+          "b": 85
+        },
+        "strokeWidth": 2,
+        "rotation": 0
+      },
+      "QIkDs7jkQMnc1au-8dGPo": {
+        "type": 6,
+        "shape": 0,
+        "x": 651,
+        "y": 118,
+        "width": 245,
+        "height": 121,
+        "fill": {
+          "r": 211,
+          "g": 166,
+          "b": 69
+        },
+        "strokeWidth": 2,
+        "rotation": 0
+      },
+      "wg7Ewiu_I9xp4lv3uwAR9": {
+        "type": 6,
+        "shape": 0,
+        "x": 383,
+        "y": 117,
+        "width": 245,
+        "height": 121,
+        "fill": {
+          "r": 123,
+          "g": 156,
+          "b": 198
+        },
+        "strokeWidth": 2,
+        "rotation": 0
+      },
+      "CBsWsRAfxadTHEwyUzN1U": {
+        "type": 6,
+        "shape": 0,
+        "x": 115,
+        "y": 120,
+        "width": 245,
+        "height": 121,
+        "fill": {
+          "r": 39,
+          "g": 142,
+          "b": 237
+        },
+        "strokeWidth": 2,
+        "rotation": 0
+      },
+      "ZUrBgwk1w-URwJG3olu0D": {
+        "type": 6,
+        "shape": 0,
+        "x": 1183,
+        "y": 118,
+        "width": 245,
+        "height": 121,
+        "fill": {
+          "r": 52,
+          "g": 213,
+          "b": 84
+        },
+        "strokeWidth": 2,
+        "rotation": 0
+      },
+      "odpxX5v3mlQjUjrWbTFT7": {
+        "type": 0,
+        "x": 177,
+        "y": 126.66666666666666,
+        "width": 100,
+        "height": 54,
+        "fill": {
+          "r": 10,
+          "g": 10,
+          "b": 10
+        },
+        "value": "S"
+      },
+      "uiSOgCIkFRXwI7s9O0jWS": {
+        "type": 0,
+        "x": 453,
+        "y": 124,
+        "width": 100,
+        "height": 51,
+        "fill": {
+          "r": 0,
+          "g": 0,
+          "b": 0
+        },
+        "value": "M"
+      },
+      "suZvfuk9xMRU-calGJaGd": {
+        "type": 0,
+        "x": 720,
+        "y": 123,
+        "width": 100,
+        "height": 50,
+        "fill": {
+          "r": 5,
+          "g": 5,
+          "b": 5
+        },
+        "value": "A"
+      },
+      "CEOn4beIx5-2mNWZouEz2": {
+        "type": 0,
+        "x": 989,
+        "y": 128,
+        "width": 100,
+        "height": 42,
+        "fill": {
+          "r": 3,
+          "g": 3,
+          "b": 3
+        },
+        "value": "R"
+      },
+      "2sxNY4HV81GYtOGDmJkrg": {
+        "type": 0,
+        "x": 1257,
+        "y": 129,
+        "width": 100,
+        "height": 46,
+        "fill": {
+          "r": 18,
+          "g": 18,
+          "b": 18
+        },
+        "value": "T"
+      },
+      "gTaKoUNdIR1BuOA8nHBXq": {
+        "type": 0,
+        "x": 186,
+        "y": 164,
+        "width": 81,
+        "height": 35,
+        "fill": {
+          "r": 10,
+          "g": 10,
+          "b": 10
+        },
+        "value": "Specific"
+      },
+      "l0H70d87f9CoO18IQ0fTM": {
+        "type": 0,
+        "x": 455,
+        "y": 159,
+        "width": 94,
+        "height": 35,
+        "fill": {
+          "r": 10,
+          "g": 10,
+          "b": 10
+        },
+        "value": "Measurable"
+      },
+      "XkBaQ-jaIdr_9OQgBaZka": {
+        "type": 0,
+        "x": 724,
+        "y": 157,
+        "width": 89,
+        "height": 35,
+        "fill": {
+          "r": 10,
+          "g": 10,
+          "b": 10
+        },
+        "value": "Attainable"
+      },
+      "RtAVAOCcyD191jLZmhey1": {
+        "type": 0,
+        "x": 999,
+        "y": 153,
+        "width": 77,
+        "height": 35,
+        "fill": {
+          "r": 10,
+          "g": 10,
+          "b": 10
+        },
+        "value": "Relevant"
+      },
+      "aZC66FXEwBu7hzrCgVyXb": {
+        "type": 0,
+        "x": 1262,
+        "y": 155,
+        "width": 89,
+        "height": 35,
+        "fill": {
+          "r": 10,
+          "g": 10,
+          "b": 10
+        },
+        "value": "Time-based"
+      },
+      "007oBY5goI20ALW36frrn": {
+        "type": 6,
+        "shape": 0,
+        "x": 113,
+        "y": 253,
+        "width": 247,
+        "height": 365,
+        "fill": {
+          "r": 225,
+          "g": 183,
+          "b": 240
+        },
+        "strokeWidth": 2,
+        "rotation": 0
+      },
+      "x4ejygI7NRA63gdMr2r0c": {
+        "type": 6,
+        "shape": 0,
+        "x": 381,
+        "y": 252,
+        "width": 247,
+        "height": 365,
+        "fill": {
+          "r": 178,
+          "g": 216,
+          "b": 235
+        },
+        "strokeWidth": 2,
+        "rotation": 0
+      },
+      "3vvBEzzTQmBFCyi0m2B6z": {
+        "type": 6,
+        "shape": 0,
+        "x": 649,
+        "y": 252,
+        "width": 247,
+        "height": 365,
+        "fill": {
+          "r": 238,
+          "g": 234,
+          "b": 140
+        },
+        "strokeWidth": 2,
+        "rotation": 0
+      },
+      "sOmsfxHUnWPSOF3IdR0RZ": {
+        "type": 6,
+        "shape": 0,
+        "x": 916,
+        "y": 253,
+        "width": 247,
+        "height": 365,
+        "fill": {
+          "r": 187,
+          "g": 175,
+          "b": 150
+        },
+        "strokeWidth": 2,
+        "rotation": 0
+      },
+      "RPF4aof-IiCDf6VTBfTV6": {
+        "type": 6,
+        "shape": 0,
+        "x": 1183,
+        "y": 250,
+        "width": 247,
+        "height": 365,
+        "fill": {
+          "r": 167,
+          "g": 247,
+          "b": 161
+        },
+        "strokeWidth": 2,
+        "rotation": 0
+      },
+      "hHO19NnOVzLyJtKzK_2Z3": {
+        "type": 0,
+        "x": 157,
+        "y": 197,
+        "width": 152,
+        "height": 38,
+        "fill": {
+          "r": 0,
+          "g": 0,
+          "b": 0
+        },
+        "value": "What goal do you want to accomplish?"
+      },
+      "R350fDohrFqHrKszyzC7-": {
+        "type": 0,
+        "x": 435,
+        "y": 194,
+        "width": 135,
+        "height": 36,
+        "fill": {
+          "r": 0,
+          "g": 0,
+          "b": 0
+        },
+        "value": "What are the milestones to accomplish the goal?"
+      },
+      "UyAxHjS2QO6e69vQ12C3r": {
+        "type": 0,
+        "x": 703,
+        "y": 191,
+        "width": 143,
+        "height": 35,
+        "fill": {
+          "r": 0,
+          "g": 0,
+          "b": 0
+        },
+        "value": "How can this goal be accomplished?"
+      },
+      "lQE3oTCRh7vvBdLCme8oH": {
+        "type": 0,
+        "x": 964,
+        "y": 191,
+        "width": 153,
+        "height": 33,
+        "fill": {
+          "r": 0,
+          "g": 0,
+          "b": 0
+        },
+        "value": "Does this goal align with the company objective?"
+      },
+      "O955tCr8OsNqSijGne8U4": {
+        "type": 0,
+        "x": 1238,
+        "y": 192,
+        "width": 143,
+        "height": 36,
+        "fill": {
+          "r": 0,
+          "g": 0,
+          "b": 0
+        },
+        "value": "When is the deadline for this goal?"
+      }
+    }
+  }
+}

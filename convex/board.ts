@@ -21,29 +21,45 @@ const images=[
     "./placeholder/17.svg",
 ]
 
-export const create=mutation({
-    args:{
-        orgId:v.string(),
-        title: v.string(),
+export const create = mutation({
+    args: {
+      orgId: v.string(),
+      title: v.string(),
+      templateId: v.optional(v.id("templates")),
     },
-    handler:async(ctx,args)=>{
-        const identity=await ctx.auth.getUserIdentity();
-        if(!identity){
-            throw new Error("Not authenticated");
-        }
-        
-        const imageUrl=images[Math.floor(Math.random()*images.length)];
-        const board=await ctx.db.insert("boards",{
-            title:args.title,
-            orgId:args.orgId,
-            authorId:identity.subject,
-            authorName:identity.name!,
-            imageUrl:imageUrl,
-        })
-        return board;
-    }
-    
-});
+    handler: async (ctx, args) => {
+      const identity = await ctx.auth.getUserIdentity();
+      if (!identity) {
+        throw new Error("Not authenticated");
+      }
+  
+      const imageUrl = images[Math.floor(Math.random() * images.length)];
+  
+      
+      const authorName =
+        identity.givenName && identity.familyName
+          ? `${identity.givenName} ${identity.familyName}`
+          : identity.givenName
+          ? identity.givenName
+          : identity.name && !identity.name.includes("{{")
+          ? identity.name
+          : "Unknown";
+  
+      const board = await ctx.db.insert("boards", {
+        title: args.title,
+        orgId: args.orgId,
+        authorId: identity.subject,
+        authorName, 
+        imageUrl,
+        templateId: args.templateId,
+      });
+  
+      return board;
+    },
+  });
+  
+  
+  
 
 export const remove=mutation({
     args:{

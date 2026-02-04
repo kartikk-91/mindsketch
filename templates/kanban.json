@@ -1,0 +1,392 @@
+{
+  "name": "Kanban Board",
+  "thumbnail": "kanban.png",
+  "snapshot": {
+    "layerIds": [
+      "aDdYlZ956qmY03lmB9A3s",
+      "QBCDxySWboS8QLpm7GtJP",
+      "qPVPEYaTwnE6KUTzeRs0g",
+      "dkJyj4BDMbe6WKAIq8xI3",
+      "yjoJ-nIoazKmKQbfztpMZ",
+      "jAegBrn429LGXRdVTU3Qr",
+      "pjXxhBhLFIfBgGlaCw1cA",
+      "_fRbM-o6IkSshBWJhQ_Lu",
+      "42lQ-V0RcmfBSfW3sHlu0",
+      "KyQ2wjrPHgDYXsACNPR3B",
+      "AcT3gmya33NGAZSRjPurO",
+      "Xn0ng9wzDSqEr6HyZh7lw",
+      "8EeO2DxKxuTcF-Qciok9X",
+      "9i8EXM35jwJUkfIf99-_t",
+      "wIYEQ2XJvu8FeadhnFg7v",
+      "B789jMCfnmxVysCs6qtb5",
+      "_AfizCUQzuYtoIwZqPm3u",
+      "2s33ZBtO-bItQv6aeA9ZR",
+      "-NZM7FqLcVuwroxPf3UX-",
+      "ESxf1bUjA50yHqU53UZd5",
+      "QSHz9qEoHwY4smSL1M4ox",
+      "GJamJcBIFxk-0XbjQo6T-",
+      "qv5NSb7eMbJDGmF6EEPJj",
+      "hCCfx2fBtKaEMn9e6aT1D",
+      "jV5-0t7PXEtzGZasIXX2-",
+      "hoyKiZO2WyMhi4XaJjYPL",
+      "tFSd7kFLsnTo5qDw_AHUm",
+      "dPxK83-8OTfxPYVztO1F6",
+      "fV9f_fBN1zSph7HqjjvMU",
+      "lYd-8xVrEIaHM4QEo0UWr",
+      "bPkjbJtlRRAN7V0DFrYO8",
+      "ym8dBPBt67CrK8KjQnn6t"
+    ],
+    "layers": {
+      "QBCDxySWboS8QLpm7GtJP": {
+        "type": 0,
+        "x": 560,
+        "y": -2,
+        "width": 420,
+        "height": 116,
+        "fill": {
+          "r": 10,
+          "g": 10,
+          "b": 10
+        },
+        "value": "KANBAN BOARD"
+      },
+      "dkJyj4BDMbe6WKAIq8xI3": {
+        "type": 6,
+        "shape": 0,
+        "x": 481,
+        "y": 123,
+        "width": 279,
+        "height": 475,
+        "fill": {
+          "r": -1,
+          "g": -1,
+          "b": -1
+        },
+        "strokeWidth": 2,
+        "rotation": 0,
+        "stroke": {
+          "r": 204,
+          "g": 199,
+          "b": 62
+        }
+      },
+      "_fRbM-o6IkSshBWJhQ_Lu": {
+        "type": 6,
+        "shape": 0,
+        "x": 123,
+        "y": 122,
+        "width": 279,
+        "height": 475,
+        "fill": {
+          "r": -1,
+          "g": -1,
+          "b": -1
+        },
+        "strokeWidth": 2,
+        "rotation": 0,
+        "stroke": {
+          "r": 157,
+          "g": 148,
+          "b": 225
+        }
+      },
+      "42lQ-V0RcmfBSfW3sHlu0": {
+        "type": 6,
+        "shape": 0,
+        "x": 841,
+        "y": 122,
+        "width": 279,
+        "height": 475,
+        "fill": {
+          "r": -1,
+          "g": -1,
+          "b": -1
+        },
+        "strokeWidth": 2,
+        "rotation": 0,
+        "stroke": {
+          "r": 156,
+          "g": 183,
+          "b": 82
+        }
+      },
+      "KyQ2wjrPHgDYXsACNPR3B": {
+        "type": 6,
+        "shape": 0,
+        "x": 1201,
+        "y": 122,
+        "width": 279,
+        "height": 475,
+        "fill": {
+          "r": -1,
+          "g": -1,
+          "b": -1
+        },
+        "strokeWidth": 2,
+        "rotation": 0,
+        "stroke": {
+          "r": 225,
+          "g": 20,
+          "b": 20
+        }
+      },
+      "AcT3gmya33NGAZSRjPurO": {
+        "type": 6,
+        "shape": 0,
+        "x": 122,
+        "y": 120.77777777777777,
+        "width": 280,
+        "height": 59.777777777777715,
+        "fill": {
+          "r": 39,
+          "g": 142,
+          "b": 237
+        },
+        "strokeWidth": 2,
+        "rotation": 0
+      },
+      "8EeO2DxKxuTcF-Qciok9X": {
+        "type": 6,
+        "shape": 0,
+        "x": 480,
+        "y": 124,
+        "width": 280,
+        "height": 59.777777777777715,
+        "fill": {
+          "r": 170,
+          "g": 222,
+          "b": 74
+        },
+        "strokeWidth": 2,
+        "rotation": 0
+      },
+      "9i8EXM35jwJUkfIf99-_t": {
+        "type": 6,
+        "shape": 0,
+        "x": 839,
+        "y": 123,
+        "width": 280,
+        "height": 59.777777777777715,
+        "fill": {
+          "r": 68,
+          "g": 202,
+          "b": 99
+        },
+        "strokeWidth": 2,
+        "rotation": 0
+      },
+      "wIYEQ2XJvu8FeadhnFg7v": {
+        "type": 6,
+        "shape": 0,
+        "x": 1201,
+        "y": 122,
+        "width": 280,
+        "height": 59.777777777777715,
+        "fill": {
+          "r": 243,
+          "g": 82,
+          "b": 35
+        },
+        "strokeWidth": 2,
+        "rotation": 0
+      },
+      "B789jMCfnmxVysCs6qtb5": {
+        "type": 0,
+        "x": 210,
+        "y": 109.55555555555549,
+        "width": 100,
+        "height": 100,
+        "fill": {
+          "r": 255,
+          "g": 249,
+          "b": 177
+        },
+        "value": "To Do"
+      },
+      "2s33ZBtO-bItQv6aeA9ZR": {
+        "type": 0,
+        "x": 573,
+        "y": 113.55555555555549,
+        "width": 92,
+        "height": 83,
+        "fill": {
+          "r": 255,
+          "g": 249,
+          "b": 177
+        },
+        "value": "Doing"
+      },
+      "-NZM7FqLcVuwroxPf3UX-": {
+        "type": 0,
+        "x": 904,
+        "y": 103.55555555555549,
+        "width": 147,
+        "height": 100,
+        "fill": {
+          "r": 255,
+          "g": 249,
+          "b": 177
+        },
+        "value": "Completed"
+      },
+      "ESxf1bUjA50yHqU53UZd5": {
+        "type": 0,
+        "x": 1294,
+        "y": 104.55555555555549,
+        "width": 100,
+        "height": 100,
+        "fill": {
+          "r": 255,
+          "g": 249,
+          "b": 177
+        },
+        "value": "Backlogs"
+      },
+      "QSHz9qEoHwY4smSL1M4ox": {
+        "type": 1,
+        "x": 160,
+        "y": 217.5555555555555,
+        "width": 96,
+        "height": 48,
+        "fill": {
+          "r": 255,
+          "g": 249,
+          "b": 177
+        },
+        "value": "Task 1"
+      },
+      "qv5NSb7eMbJDGmF6EEPJj": {
+        "type": 1,
+        "x": 234,
+        "y": 293.5555555555555,
+        "width": 96,
+        "height": 48,
+        "fill": {
+          "r": 68,
+          "g": 202,
+          "b": 99
+        },
+        "value": "Task 2"
+      },
+      "hCCfx2fBtKaEMn9e6aT1D": {
+        "type": 1,
+        "x": 157,
+        "y": 388.5555555555555,
+        "width": 96,
+        "height": 48,
+        "fill": {
+          "r": 156,
+          "g": 136,
+          "b": 165
+        },
+        "value": "Task 3"
+      },
+      "jV5-0t7PXEtzGZasIXX2-": {
+        "type": 1,
+        "x": 555,
+        "y": 265.5555555555555,
+        "width": 96,
+        "height": 48,
+        "fill": {
+          "r": 168,
+          "g": 194,
+          "b": 172
+        },
+        "value": "Task 6"
+      },
+      "tFSd7kFLsnTo5qDw_AHUm": {
+        "type": 1,
+        "x": 513,
+        "y": 386.5555555555555,
+        "width": 96,
+        "height": 48,
+        "fill": {
+          "r": 165,
+          "g": 151,
+          "b": 151
+        },
+        "value": "Task 4"
+      },
+      "dPxK83-8OTfxPYVztO1F6": {
+        "type": 1,
+        "x": 633,
+        "y": 377.5555555555555,
+        "width": 96,
+        "height": 48,
+        "fill": {
+          "r": 26,
+          "g": 71,
+          "b": 33
+        },
+        "value": "Task 9"
+      },
+      "fV9f_fBN1zSph7HqjjvMU": {
+        "type": 1,
+        "x": 882,
+        "y": 230.5555555555555,
+        "width": 96,
+        "height": 48,
+        "fill": {
+          "r": 30,
+          "g": 148,
+          "b": 48
+        },
+        "value": "Task 10"
+      },
+      "lYd-8xVrEIaHM4QEo0UWr": {
+        "type": 1,
+        "x": 1304,
+        "y": 264.5555555555555,
+        "width": 96,
+        "height": 48,
+        "fill": {
+          "r": 145,
+          "g": 105,
+          "b": 64
+        },
+        "value": "Task 5"
+      },
+      "bPkjbJtlRRAN7V0DFrYO8": {
+        "type": 1,
+        "x": 966,
+        "y": 332.5555555555555,
+        "width": 96,
+        "height": 48,
+        "fill": {
+          "r": 94,
+          "g": 66,
+          "b": 33
+        },
+        "value": "Task 7"
+      },
+      "ym8dBPBt67CrK8KjQnn6t": {
+        "type": 1,
+        "x": 868,
+        "y": 452.5555555555555,
+        "width": 96,
+        "height": 48,
+        "fill": {
+          "r": 77,
+          "g": 74,
+          "b": 71
+        },
+        "value": "Task 8"
+      },
+      "aDdYlZ956qmY03lmB9A3s": {
+        "type": 6,
+        "shape": 7,
+        "x": 522,
+        "y": 9.555555555555486,
+        "width": 486,
+        "height": 80,
+        "fill": {
+          "r": 196,
+          "g": 206,
+          "b": 146
+        },
+        "strokeWidth": 2,
+        "rotation": 0
+      }
+    }
+  }
+}

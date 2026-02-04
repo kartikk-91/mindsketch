@@ -21,6 +21,7 @@ import { ConfirmModal } from "./confirm-modal";
 import { useApiMutation } from "@/hooks/use-api-mutation";
 import { useRenameModal } from "@/store/use-rename-modal";
 import { api } from "@/convex/_generated/api";
+import { useRouter } from "next/navigation";
 
 
 
@@ -41,6 +42,7 @@ export const Actions = ({
   id,
   title,
 }: ActionProps) => {
+  const router = useRouter();
   const { onOpen } = useRenameModal();
   const { mutate, pending } = useApiMutation(api.board.remove);
 
@@ -48,6 +50,8 @@ export const Actions = ({
     mutate({ id })
       .then(() => {
         toast.success("Board deleted successfully");
+        router.push("/");
+        router.refresh();
       })
       .catch(() => {
         toast.error("Failed to delete board");

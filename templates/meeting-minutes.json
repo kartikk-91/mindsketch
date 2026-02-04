@@ -1,0 +1,329 @@
+{
+  "name": "Meeting Minutes",
+  "thumbnail": "meeting-minutes.png",
+  "snapshot": {
+    "layerIds": [
+      "wqx1HPsBFRAQH96EGlR2I",
+      "yX22QXvYFdXNLbwVE4q_Y",
+      "8jxO2bUrg7BInd-EYo1Ow",
+      "6osGYHpclHt9N92GhkTX_",
+      "4VT0PhNO7rK_TYpetqhJ9",
+      "pnSPDeNlBkDE0DhGpF6OZ",
+      "KzRkWTki6Y1PNsbd5NAxX",
+      "74OzeNB0eFjj6_IxDIEWZ",
+      "TMVwBVGvCpRnMlgaS3gsU",
+      "9IM5WrXU4Ce5FtDIXevOh",
+      "lj1C41-YKDt2g8kJX2ZUK",
+      "WjyE9fxbKHTbksUnDdemc",
+      "MqsWCO9tBTlMsXE-woJCT",
+      "GUdYIEaTnRxRwyI5VX0Rp",
+      "d6LF4m9DDk5YhYbWZDdds",
+      "7DlEZ5ekgEPQiNdM8o8Dl",
+      "hfXWHNHyGgI8ywwJR8sg2",
+      "Q9kafV9XK5GAZW61IuXrn",
+      "h03u6u0fc0Xbi63VPUJOm",
+      "h_IjxLpZSRHEImz7c06Yi"
+    ],
+    "layers": {
+      "wqx1HPsBFRAQH96EGlR2I": {
+        "type": 0,
+        "x": 577,
+        "y": 44,
+        "width": 431,
+        "height": 108,
+        "fill": {
+          "r": 18,
+          "g": 18,
+          "b": 18
+        },
+        "value": "MEETING MINUTES"
+      },
+      "yX22QXvYFdXNLbwVE4q_Y": {
+        "type": 6,
+        "shape": 0,
+        "x": 118,
+        "y": 162,
+        "width": 479,
+        "height": 240,
+        "fill": {
+          "r": -1,
+          "g": -1,
+          "b": -1
+        },
+        "strokeWidth": 2,
+        "rotation": 0,
+        "stroke": {
+          "r": 104,
+          "g": 141,
+          "b": 227
+        }
+      },
+      "8jxO2bUrg7BInd-EYo1Ow": {
+        "type": 6,
+        "shape": 0,
+        "x": 622,
+        "y": 163,
+        "width": 479,
+        "height": 240,
+        "fill": {
+          "r": -1,
+          "g": -1,
+          "b": -1
+        },
+        "strokeWidth": 2,
+        "rotation": 0,
+        "stroke": {
+          "r": 104,
+          "g": 141,
+          "b": 227
+        }
+      },
+      "6osGYHpclHt9N92GhkTX_": {
+        "type": 6,
+        "shape": 0,
+        "x": 118,
+        "y": 429,
+        "width": 479,
+        "height": 240,
+        "fill": {
+          "r": -1,
+          "g": -1,
+          "b": -1
+        },
+        "strokeWidth": 2,
+        "rotation": 0,
+        "stroke": {
+          "r": 104,
+          "g": 141,
+          "b": 227
+        }
+      },
+      "4VT0PhNO7rK_TYpetqhJ9": {
+        "type": 6,
+        "shape": 0,
+        "x": 624,
+        "y": 429,
+        "width": 479,
+        "height": 240,
+        "fill": {
+          "r": -1,
+          "g": -1,
+          "b": -1
+        },
+        "strokeWidth": 2,
+        "rotation": 0,
+        "stroke": {
+          "r": 104,
+          "g": 141,
+          "b": 227
+        }
+      },
+      "pnSPDeNlBkDE0DhGpF6OZ": {
+        "type": 6,
+        "shape": 0,
+        "x": 1132,
+        "y": 162,
+        "width": 362,
+        "height": 506,
+        "fill": {
+          "r": -1,
+          "g": -1,
+          "b": -1
+        },
+        "strokeWidth": 2,
+        "rotation": 0,
+        "stroke": {
+          "r": 104,
+          "g": 141,
+          "b": 227
+        }
+      },
+      "KzRkWTki6Y1PNsbd5NAxX": {
+        "type": 0,
+        "x": 706,
+        "y": 114,
+        "width": 156,
+        "height": 47,
+        "fill": {
+          "r": 0,
+          "g": 0,
+          "b": 0
+        },
+        "value": "Date: DD/MM/YYYY"
+      },
+      "74OzeNB0eFjj6_IxDIEWZ": {
+        "type": 6,
+        "shape": 0,
+        "x": 117,
+        "y": 162,
+        "width": 479,
+        "height": 29,
+        "fill": {
+          "r": -1,
+          "g": -1,
+          "b": -1
+        },
+        "strokeWidth": 2,
+        "rotation": 0,
+        "stroke": {
+          "r": 104,
+          "g": 141,
+          "b": 227
+        }
+      },
+      "TMVwBVGvCpRnMlgaS3gsU": {
+        "type": 6,
+        "shape": 0,
+        "x": 623,
+        "y": 163,
+        "width": 479,
+        "height": 29,
+        "fill": {
+          "r": -1,
+          "g": -1,
+          "b": -1
+        },
+        "strokeWidth": 2,
+        "rotation": 0,
+        "stroke": {
+          "r": 104,
+          "g": 141,
+          "b": 227
+        }
+      },
+      "9IM5WrXU4Ce5FtDIXevOh": {
+        "type": 6,
+        "shape": 0,
+        "x": 118,
+        "y": 429,
+        "width": 479,
+        "height": 29,
+        "fill": {
+          "r": -1,
+          "g": -1,
+          "b": -1
+        },
+        "strokeWidth": 2,
+        "rotation": 0,
+        "stroke": {
+          "r": 104,
+          "g": 141,
+          "b": 227
+        }
+      },
+      "MqsWCO9tBTlMsXE-woJCT": {
+        "type": 6,
+        "shape": 0,
+        "x": 624,
+        "y": 429,
+        "width": 479,
+        "height": 29,
+        "fill": {
+          "r": -1,
+          "g": -1,
+          "b": -1
+        },
+        "strokeWidth": 2,
+        "rotation": 0,
+        "stroke": {
+          "r": 104,
+          "g": 141,
+          "b": 227
+        }
+      },
+      "GUdYIEaTnRxRwyI5VX0Rp": {
+        "type": 6,
+        "shape": 0,
+        "x": 1132,
+        "y": 163,
+        "width": 362,
+        "height": 29,
+        "fill": {
+          "r": -1,
+          "g": -1,
+          "b": -1
+        },
+        "strokeWidth": 2,
+        "rotation": 0,
+        "stroke": {
+          "r": 104,
+          "g": 141,
+          "b": 227
+        }
+      },
+      "d6LF4m9DDk5YhYbWZDdds": {
+        "type": 0,
+        "x": 307,
+        "y": 159,
+        "width": 100,
+        "height": 36,
+        "fill": {
+          "r": 39,
+          "g": 142,
+          "b": 237
+        },
+        "value": "Attendees"
+      },
+      "7DlEZ5ekgEPQiNdM8o8Dl": {
+        "type": 0,
+        "x": 809,
+        "y": 162,
+        "width": 100,
+        "height": 36,
+        "fill": {
+          "r": 39,
+          "g": 142,
+          "b": 237
+        },
+        "value": "Agenda"
+      },
+      "hfXWHNHyGgI8ywwJR8sg2": {
+        "type": 0,
+        "x": 1233,
+        "y": 161,
+        "width": 173,
+        "height": 36,
+        "fill": {
+          "r": 39,
+          "g": 142,
+          "b": 237
+        },
+        "value": "Final Announcements"
+      },
+      "Q9kafV9XK5GAZW61IuXrn": {
+        "type": 0,
+        "x": 302,
+        "y": 427,
+        "width": 100,
+        "height": 36,
+        "fill": {
+          "r": 39,
+          "g": 142,
+          "b": 237
+        },
+        "value": "Updates"
+      },
+      "h03u6u0fc0Xbi63VPUJOm": {
+        "type": 0,
+        "x": 805,
+        "y": 426,
+        "width": 114,
+        "height": 36,
+        "fill": {
+          "r": 39,
+          "g": 142,
+          "b": 237
+        },
+        "value": "Action Items"
+      },
+      "h_IjxLpZSRHEImz7c06Yi": {
+        "type": 5,
+        "x": 749,
+        "y": 8,
+        "width": 114,
+        "height": 51,
+        "src": "https://aware-hawk-838.convex.cloud/api/storage/718c3a57-8de8-4fc3-9e89-7c9d6799b214"
+      }
+    }
+  }
+}

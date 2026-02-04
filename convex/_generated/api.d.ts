@@ -16,6 +16,7 @@ import type {
 import type * as board from "../board.js";
 import type * as boards from "../boards.js";
 import type * as images from "../images.js";
+import type * as templates from "../templates.js";
 
 /**
  * A utility for referencing Convex functions in your app's API.
@@ -29,6 +30,7 @@ declare const fullApi: ApiFromModules<{
   board: typeof board;
   boards: typeof boards;
   images: typeof images;
+  templates: typeof templates;
 }>;
 export declare const api: FilterApi<
   typeof fullApi,
