@@ -16,7 +16,7 @@ export default clerkMiddleware(async (auth, req) => {
     const signInUrl = new URL("/sign-in", req.url);
     signInUrl.searchParams.set(
       "redirect_url",
-      req.nextUrl.href.replace(req.nextUrl.origin, "")
+      req.nextUrl.pathname + req.nextUrl.search
     );
     
     return NextResponse.redirect(signInUrl);
