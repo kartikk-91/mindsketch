@@ -5,29 +5,29 @@ import { EmptyOrg } from "./_components/empty-org";
 import { useOrganization } from "@clerk/nextjs";
 import { useSearchParams } from "next/navigation";
 import { useMemo } from "react";
-
+import { useDashboard } from "./layout"; 
 export const dynamic = "force-dynamic";
 
 const DashboardPage = () => {
   const { organization } = useOrganization();
   const searchParams = useSearchParams();
+  const { view } = useDashboard(); 
 
-  const favoritesParam = searchParams.get("favorites");
+  const query = useMemo(
+    () => ({
+      search: searchParams.get("search") ?? undefined,
+      ...(view === "favorites" ? { favorites: true } : {}),
+    }),
+    [searchParams, view]
+  );
 
-const query = useMemo(() => ({
-  search: searchParams.get("search") ?? undefined,
-  ...(favoritesParam === "true" ? { favorites: true } : {}),
-}), [searchParams,favoritesParam]);
-
-  
+  if (!organization) {
+    return <EmptyOrg />;
+  }
 
   return (
     <div className="flex-1 h-[calc(100%-80px)] p-6">
-      {!organization ? (
-        <EmptyOrg />
-      ) : (
-        <BoardList orgId={organization.id} query={query} />
-      )}
+      <BoardList orgId={organization.id} query={query} />
     </div>
   );
 };

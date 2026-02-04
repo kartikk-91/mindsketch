@@ -5,16 +5,19 @@ import { cn } from "@/lib/utils";
 import { OrganizationSwitcher } from "@clerk/nextjs";
 import { LayoutDashboard, Star } from "lucide-react";
 import Image from "next/image";
-import Link from "next/link";
-import { useSearchParams } from "next/navigation";
 
-export const OrgSidebar = () => {
-  const searchParams = useSearchParams();
-  const favorites = searchParams.get("favorites");
+type DashboardView = "all" | "favorites";
 
+type OrgSidebarProps = {
+  view: DashboardView;
+  setView: (view: DashboardView) => void;
+};
+
+export const OrgSidebar = ({ view, setView }: OrgSidebarProps) => {
   return (
     <aside className="hidden lg:flex h-full w-[240px] flex-col border-r border-slate-200 bg-white px-5 pt-5">
-      <Link href="/" className="mb-7">
+      
+      <div className="mb-7">
         <div className="flex items-center px-2">
           <Image
             src="/logo.png"
@@ -24,8 +27,9 @@ export const OrgSidebar = () => {
             priority
           />
         </div>
-      </Link>
+      </div>
 
+      
       <div className="mb-7">
         <OrganizationSwitcher
           hidePersonal
@@ -39,20 +43,18 @@ export const OrgSidebar = () => {
         />
       </div>
 
+      
       <nav className="flex flex-col gap-1.5">
         <SidebarItem
-          href="/"
-          active={!favorites}
+          onClick={() => setView("all")}
+          active={view === "all"}
           icon={LayoutDashboard}
           label="Team boards"
         />
 
         <SidebarItem
-          href={{
-            pathname: "/",
-            query: { favorites: true },
-          }}
-          active={!!favorites}
+          onClick={() => setView("favorites")}
+          active={view === "favorites"}
           icon={Star}
           label="Favorite boards"
         />
@@ -68,39 +70,39 @@ export const OrgSidebar = () => {
 };
 
 type SidebarItemProps = {
-  href: any;
+  onClick: () => void;
   active: boolean;
   icon: any;
   label: string;
 };
 
 const SidebarItem = ({
-  href,
+  onClick,
   active,
   icon: Icon,
   label,
 }: SidebarItemProps) => {
   return (
-    <Link href={href}>
-      <div
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-[15px] transition",
+        active
+          ? "bg-slate-100 text-slate-900"
+          : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+      )}
+    >
+      <span
         className={cn(
-          "group flex items-center gap-3 rounded-xl px-3 py-2.5 text-[15px] transition",
-          active
-            ? "bg-slate-100 text-slate-900"
-            : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+          "h-5 w-[3px] rounded-full",
+          active ? "bg-slate-900" : "bg-transparent"
         )}
-      >
-        <span
-          className={cn(
-            "h-5 w-[3px] rounded-full",
-            active ? "bg-slate-900" : "bg-transparent"
-          )}
-        />
+      />
 
-        <Icon className="h-[18px] w-[18px] shrink-0" />
+      <Icon className="h-[18px] w-[18px] shrink-0" />
 
-        <span className="truncate font-medium">{label}</span>
-      </div>
-    </Link>
+      <span className="truncate font-medium">{label}</span>
+    </button>
   );
 };
