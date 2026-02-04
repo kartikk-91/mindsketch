@@ -6,7 +6,7 @@ export const get=query({
     args:{
         orgId:v.string(),
         search: v.optional(v.string()),
-        favorites: v.optional(v.string())
+        favorites: v.optional(v.boolean())
     },
     handler: async(ctx,args)=>{
         const identity=await ctx.auth.getUserIdentity();

@@ -14,7 +14,7 @@ const DashboardPage = () => {
 
   const query = useMemo(() => ({
     search: searchParams.get("search") ?? undefined,
-    favorites: searchParams.get("favorites") ?? undefined,
+    favorites: searchParams.get("favorites") === "true",
   }), [searchParams]);
 
   return (
