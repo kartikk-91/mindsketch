@@ -9,6 +9,8 @@ interface DashboardPageProps {
 
 import { useEffect, useState } from "react";
 
+export const dynamic = "force-dynamic";
+
 const DashboardPage = ({ searchParams }: DashboardPageProps) => {
   const { organization } = useOrganization();
   const [query, setQuery] = useState<{ search?: string; favorites?: string }>({});
