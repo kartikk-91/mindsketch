@@ -5,9 +5,11 @@ export type Color = {
 };
 
 export type Camera = {
-    x: number;
-    y: number;
+  x: number;
+  y: number;
+  scale: number;
 };
+
 
 export enum LayerType {
     Text,

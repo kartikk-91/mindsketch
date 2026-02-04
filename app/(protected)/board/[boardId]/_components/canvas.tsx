@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 
 import { useCallback, useMemo, useState } from "react";
 import { Camera, CanvasMode, CanvasState, Color, LayerType, Point, Side, XYWH, Layer, ShapeLayer, ShapeType } from "@/types/canvas";
@@ -26,14 +26,22 @@ import ShareActions from "./share-actions";
 // import { useExportTemplate } from "@/hooks/use-export-template";
 
 
+
+const LONG_PRESS_MS = 350;
+const MOVE_TOLERANCE = 6;
+
 const MAX_LAYERS = 100;
+
 
 interface CanvasProps {
     boardId: string;
 }
 export const Canvas = ({ boardId }: CanvasProps) => {
-    // const exportTemplate = useExportTemplate();
-
+   
+    const longPressTimer = useRef<number | null>(null);
+    const pressStart = useRef<Point | null>(null);
+    const activePointers = useRef<Map<number, Point>>(new Map());
+    const lastPanCenter = useRef<Point | null>(null);
 
 
     const layerIds = useStorage((root) => root.layerIds);
@@ -41,7 +49,12 @@ export const Canvas = ({ boardId }: CanvasProps) => {
     const [canvasState, setCanvasState] = useState<CanvasState>({
         mode: CanvasMode.None,
     });
-    const [camera, setCamera] = useState<Camera>({ x: 0, y: 0 });
+    const [camera, setCamera] = useState<Camera>({
+        x: 0,
+        y: 0,
+        scale: 1,
+    });
+
     const [lastUsedColor, setLastUsedColor] = useState<Color>({
         r: 124,
         g: 232,
@@ -77,6 +90,7 @@ export const Canvas = ({ boardId }: CanvasProps) => {
         setCamera((camera) => ({
             x: camera.x - e.deltaX,
             y: camera.y - e.deltaY,
+            scale: camera.scale
         }))
     }, [])
     const history = useHistory();
@@ -503,23 +517,80 @@ export const Canvas = ({ boardId }: CanvasProps) => {
     }, [history])
 
     const onPointerMove = useMutation(({ setMyPresence }, e: React.PointerEvent) => {
-        e.preventDefault();
+        if (activePointers.current.has(e.pointerId)) {
+            activePointers.current.set(e.pointerId, {
+                x: e.clientX,
+                y: e.clientY,
+            });
+        }
+
+       
+        if (activePointers.current.size === 2) {
+            e.preventDefault();
+
+            const pts = Array.from(activePointers.current.values());
+            const center = {
+                x: (pts[0].x + pts[1].x) / 2,
+                y: (pts[0].y + pts[1].y) / 2,
+            };
+
+            if (lastPanCenter.current) {
+                const dx = center.x - lastPanCenter.current.x;
+                const dy = center.y - lastPanCenter.current.y;
+
+                setCamera((cam) => ({
+                    x: cam.x + dx,
+                    y: cam.y + dy,
+                    scale: cam.scale,
+                }));
+            }
+
+            lastPanCenter.current = center;
+            return;
+        }
+
         const current = pointerEventToCanvasPoint(e, camera);
+        if (!current) return;
+
+       
+        if (canvasState.mode === CanvasMode.Pencil) {
+            e.preventDefault();
+            continueDrawing(current, e);
+            setMyPresence({ cursor: current });
+            return;
+        }
+
+        if (
+            e.pointerType === "touch" &&
+            pressStart.current &&
+            canvasState.mode === CanvasMode.None
+        ) {
+            const dx = Math.abs(current.x - pressStart.current.x);
+            const dy = Math.abs(current.y - pressStart.current.y);
+
+            if (dx > MOVE_TOLERANCE || dy > MOVE_TOLERANCE) {
+                if (longPressTimer.current) {
+                    clearTimeout(longPressTimer.current);
+                    longPressTimer.current = null;
+                }
+                return;
+            }
+        }
+
+       
+        e.preventDefault();
+
         if (canvasState.mode === CanvasMode.Pressing) {
             startMultiSelection(current, canvasState.origin);
         }
         else if (canvasState.mode === CanvasMode.SelectionNet) {
             updateSelectionNet(current, canvasState.origin);
-
         }
         else if (canvasState.mode === CanvasMode.Translating) {
             translateSelectedLayers(current);
         }
         else if (canvasState.mode === CanvasMode.Resizing) {
             resizeSelectedLayer(current);
-        }
-        else if (canvasState.mode === CanvasMode.Pencil) {
-            continueDrawing(current, e);
         }
         else if (canvasState.mode === CanvasMode.Rotating) {
             const { center, startAngle, initialRotation } = canvasState;
@@ -540,29 +611,99 @@ export const Canvas = ({ boardId }: CanvasProps) => {
                 : prev
         );
 
-    }, [canvasState, resizeSelectedLayer, camera, continueDrawing, translateSelectedLayers, updateSelectionNet, startMultiSelection])
+    }, [
+        canvasState,
+        resizeSelectedLayer,
+        camera,
+        continueDrawing,
+        translateSelectedLayers,
+        updateSelectionNet,
+        startMultiSelection,
+    ]);
 
     const onPointerLeave = useMutation(({ setMyPresence }) => {
         setMyPresence({ cursor: null });
     }, [])
 
     const onPointerDown = useCallback((e: React.PointerEvent) => {
+       
+        (e.target as Element).setPointerCapture(e.pointerId);
+
+        activePointers.current.set(e.pointerId, {
+            x: e.clientX,
+            y: e.clientY,
+        });
+
+       
+        if (activePointers.current.size === 2) {
+            pressStart.current = null;
+            if (longPressTimer.current) {
+                clearTimeout(longPressTimer.current);
+                longPressTimer.current = null;
+            }
+
+            const pts = Array.from(activePointers.current.values());
+            lastPanCenter.current = {
+                x: (pts[0].x + pts[1].x) / 2,
+                y: (pts[0].y + pts[1].y) / 2,
+            };
+
+            return;
+        }
+
+        if (e.pointerType === "touch" && e.isPrimary === false) return;
+
         const point = pointerEventToCanvasPoint(e, camera);
+        if (!point) return;
+
         if (canvasState.mode === CanvasMode.Inserting) {
             return;
         }
+
         if (canvasState.mode === CanvasMode.Pencil) {
             startDrawing(point, e.pressure);
             return;
         }
-        setCanvasState({
-            origin: point,
-            mode: CanvasMode.Pressing,
-        })
-    }, [camera, canvasState.mode, setCanvasState, startDrawing])
+
+       
+        if (e.pointerType !== "touch") {
+            setCanvasState({
+                origin: point,
+                mode: CanvasMode.Pressing,
+            });
+            return;
+        }
+
+       
+        pressStart.current = point;
+
+        longPressTimer.current = window.setTimeout(() => {
+            setCanvasState({
+                origin: point,
+                mode: CanvasMode.Pressing,
+            });
+        }, LONG_PRESS_MS);
+
+    }, [camera, canvasState.mode, startDrawing]);
+
 
     const onPointerUp = useMutation(({ }, e) => {
+        activePointers.current.delete(e.pointerId);
+
+        if (activePointers.current.size < 2) {
+            lastPanCenter.current = null;
+        }
+
+
+       
+        if (longPressTimer.current) {
+            clearTimeout(longPressTimer.current);
+            longPressTimer.current = null;
+        }
+        pressStart.current = null;
+
         const point = pointerEventToCanvasPoint(e, camera);
+
         if (canvasState.mode === CanvasMode.None || canvasState.mode === CanvasMode.Pressing) {
             unselectLayers();
             setCanvasState({ mode: CanvasMode.None });
@@ -602,9 +743,26 @@ export const Canvas = ({ boardId }: CanvasProps) => {
         }
 
         history.resume();
-    }, [camera, canvasState, history, insertLayer, unselectLayers, insertPath, setCanvasState]);
+    }, [
+        camera,
+        canvasState,
+        history,
+        insertLayer,
+        unselectLayers,
+        insertPath,
+        setCanvasState
+    ]);
+
 
     const selections = useOthersMapped((other) => other.presence.selection);
+
+    useEffect(() => {
+        const svg = document.getElementById("mindsketch-canvas");
+        if (!svg) return;
+
+
+        svg.style.touchAction = "none";
+    }, []);
 
 
 
@@ -619,6 +777,11 @@ export const Canvas = ({ boardId }: CanvasProps) => {
             e.stopPropagation();
 
             const point = pointerEventToCanvasPoint(e, camera);
+            pressStart.current = null;
+            if (longPressTimer.current) {
+                clearTimeout(longPressTimer.current);
+                longPressTimer.current = null;
+            }
             if (!point) return;
 
             if (!self.presence?.selection?.includes(layerId)) {
@@ -651,9 +814,52 @@ export const Canvas = ({ boardId }: CanvasProps) => {
         return layerIdsToColorSelection;
     }, [selections])
 
+    const MIN_ZOOM = 0.3;
+    const MAX_ZOOM = 3;
+    const ZOOM_STEP = 0.1;
+
+    function clampZoom(z: number) {
+        return Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, z));
+    }
+
+    const zoomOut = () => {
+        setCamera((cam) => {
+            const nextScale = clampZoom(cam.scale - ZOOM_STEP);
+            const ratio = nextScale / cam.scale;
+
+            return {
+                scale: nextScale,
+                x: cam.x * ratio,
+                y: cam.y * ratio,
+            };
+        });
+    };
+    const resetZoom = () => {
+        setCamera({
+            x: 0,
+            y: 0,
+            scale: 1,
+        });
+    };
+
+    const zoomIn = () => {
+        setCamera((cam) => {
+            const nextScale = clampZoom(cam.scale + ZOOM_STEP);
+            const ratio = nextScale / cam.scale;
+
+            return {
+                scale: nextScale,
+                x: cam.x * ratio,
+                y: cam.y * ratio,
+            };
+        });
+    };
+
+
+
     return (
         <main
-            className="h-full w-full relative  bg-neutral-100 touch-none select-none"
+            className="h-full w-full relative  bg-neutral-100 select-none"
         >
             <Info boardId={boardId} />
             <Participants />
@@ -664,7 +870,11 @@ export const Canvas = ({ boardId }: CanvasProps) => {
                 redo={history.redo}
                 canUndo={canUndo}
                 canRedo={canRedo}
+                zoomIn={zoomIn}
+                zoomOut={zoomOut}
+                resetZoom={resetZoom}
             />
+
             <SelectionTools
                 camera={camera}
                 setLastUsedColor={setLastUsedColor}
@@ -698,8 +908,8 @@ export const Canvas = ({ boardId }: CanvasProps) => {
 
                         <pattern
                             id="grid-small"
-                            width="24"
-                            height="24"
+                            width={24 * camera.scale}
+                            height={24 * camera.scale}
                             patternUnits="userSpaceOnUse"
                             patternTransform={`translate(${camera.x}, ${camera.y})`}
                         >
@@ -707,15 +917,16 @@ export const Canvas = ({ boardId }: CanvasProps) => {
                                 d="M 24 0 L 0 0 0 24"
                                 fill="none"
                                 stroke="rgba(0,0,0,0.04)"
-                                strokeWidth="1"
+                                strokeWidth={1 / camera.scale}
                             />
                         </pattern>
 
 
+
                         <pattern
                             id="grid-large"
-                            width="120"
-                            height="120"
+                            width={120 * camera.scale}
+                            height={120 * camera.scale}
                             patternUnits="userSpaceOnUse"
                             patternTransform={`translate(${camera.x}, ${camera.y})`}
                         >
@@ -723,9 +934,10 @@ export const Canvas = ({ boardId }: CanvasProps) => {
                                 d="M 120 0 L 0 0 0 120"
                                 fill="none"
                                 stroke="rgba(0,0,0,0.07)"
-                                strokeWidth="1"
+                                strokeWidth={1 / camera.scale}
                             />
                         </pattern>
+
                     </defs>
 
                     <rect width="100%" height="100%" fill="url(#grid-small)" />
@@ -733,9 +945,17 @@ export const Canvas = ({ boardId }: CanvasProps) => {
 
                     <rect width="100%" height="100%" fill="url(#grid-large)" />
 
-                    <g id="canvas-content"
-                        style={{ transform: `translate(${camera.x}px,${camera.y}px)` }}
+                    <g
+                        id="canvas-content"
+                        style={{
+                            transform: `
+      translate(${camera.x}px, ${camera.y}px)
+      scale(${camera.scale})
+    `,
+                            transformOrigin: "0 0",
+                        }}
                     >
+
                         {
                             layerIds && layerIds.map((layerId) => {
                                 return <LayerPreview key={layerId} id={layerId} onLayerPointerDown={onLayerPointerDown}
