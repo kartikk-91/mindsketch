@@ -15,7 +15,7 @@ interface BoardListProps {
   orgId: string;
   query: {
     search?: string;
-    favorites?: boolean;
+    favorites?: true;
   };
 }
 
@@ -33,7 +33,8 @@ export const BoardList = ({ orgId, query }: BoardListProps) => {
     return (
       <div>
         <h2 className="text-3xl font-semibold">
-          {query.favorites ? "Favorite boards" : "Team boards"}
+        {query.favorites === true ? "Favorite boards" : "Team boards"}
+
         </h2>
 
         <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 xl:grid-cols-5 gap-5">
@@ -48,12 +49,13 @@ export const BoardList = ({ orgId, query }: BoardListProps) => {
 
   
   if (!boards.length && query.search) return <EmptySearch />;
-  if (!boards.length && query.favorites) return <EmptyFavorites />;
+  if (!boards.length && query.favorites === true) return <EmptyFavorites />;
+
 
   return (
     <div className="space-y-16">
       
-      {!query.search && !query.favorites && (
+      {!query.search && query.favorites !== true && (
         <section>
           <h2 className="text-3xl font-semibold">Start from a template</h2>
 

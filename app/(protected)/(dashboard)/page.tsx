@@ -12,10 +12,17 @@ const DashboardPage = () => {
   const { organization } = useOrganization();
   const searchParams = useSearchParams();
 
-  const query = useMemo(() => ({
+  const query = useMemo<{
+    search?: string;
+    favorites?: true;
+  }>(() => ({
     search: searchParams.get("search") ?? undefined,
-    favorites: searchParams.get("favorites") === "true",
+    favorites:
+      searchParams.get("favorites") === "true"
+        ? true
+        : undefined,
   }), [searchParams]);
+  
 
   return (
     <div className="flex-1 h-[calc(100%-80px)] p-6">
