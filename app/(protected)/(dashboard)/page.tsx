@@ -1,25 +1,21 @@
 "use client";
+
 import { BoardList } from "./_components/board-list";
 import { EmptyOrg } from "./_components/empty-org";
 import { useOrganization } from "@clerk/nextjs";
-
-interface DashboardPageProps {
-  searchParams: Promise<{ search?: string; favorites?: string }>;
-}
-
-import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { useMemo } from "react";
 
 export const dynamic = "force-dynamic";
 
-const DashboardPage = ({ searchParams }: DashboardPageProps) => {
+const DashboardPage = () => {
   const { organization } = useOrganization();
-  const [query, setQuery] = useState<{ search?: string; favorites?: string }>({});
+  const searchParams = useSearchParams();
 
-  useEffect(() => {
-    searchParams.then(params => setQuery(params));
-  }, [searchParams]);
-
-  
+  const query = useMemo(() => ({
+    search: searchParams.get("search") ?? undefined,
+    favorites: searchParams.get("favorites") ?? undefined,
+  }), [searchParams]);
 
   return (
     <div className="flex-1 h-[calc(100%-80px)] p-6">
