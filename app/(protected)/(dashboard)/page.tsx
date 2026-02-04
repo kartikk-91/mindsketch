@@ -12,16 +12,13 @@ const DashboardPage = () => {
   const { organization } = useOrganization();
   const searchParams = useSearchParams();
 
-  const query = useMemo<{
-    search?: string;
-    favorites?: true;
-  }>(() => ({
-    search: searchParams.get("search") ?? undefined,
-    favorites:
-      searchParams.get("favorites") === "true"
-        ? true
-        : undefined,
-  }), [searchParams]);
+  const favoritesParam = searchParams.get("favorites");
+
+const query = useMemo(() => ({
+  search: searchParams.get("search") ?? undefined,
+  ...(favoritesParam === "true" ? { favorites: true } : {}),
+}), [searchParams,favoritesParam]);
+
   
 
   return (

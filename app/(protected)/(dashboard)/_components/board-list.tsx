@@ -15,25 +15,27 @@ interface BoardListProps {
   orgId: string;
   query: {
     search?: string;
-    favorites?: true;
+    favorites?: boolean;
   };
 }
 
 export const BoardList = ({ orgId, query }: BoardListProps) => {
   const boards = useQuery(api.boards.get, { orgId, ...query });
   const templates = useQuery(api.templates.list);
+  const isFavorites = query.favorites === true;
 
   const createBoard = useMutation(api.board.create);
   const router = useRouter();
 
   const [creatingId, setCreatingId] = useState<string | null>(null);
 
-  
+
   if (boards === undefined) {
     return (
       <div>
         <h2 className="text-3xl font-semibold">
-        {query.favorites === true ? "Favorite boards" : "Team boards"}
+          {isFavorites ? "Favorite boards" : "Team boards"}
+
 
         </h2>
 
@@ -47,25 +49,26 @@ export const BoardList = ({ orgId, query }: BoardListProps) => {
     );
   }
 
-  
+
   if (!boards.length && query.search) return <EmptySearch />;
-  if (!boards.length && query.favorites === true) return <EmptyFavorites />;
+  if (!boards.length && isFavorites) return <EmptyFavorites />;
+
 
 
   return (
     <div className="space-y-16">
-      
-      {!query.search && query.favorites !== true && (
+
+      {!query.search && !isFavorites && (
         <section>
           <h2 className="text-3xl font-semibold">Start from a template</h2>
 
           <div className="relative mt-6">
-            
+
             <div className="pointer-events-none absolute left-0 top-0 h-full w-8 bg-gradient-to-r from-background to-transparent z-10" />
             <div className="pointer-events-none absolute right-0 top-0 h-full w-8 bg-gradient-to-l from-background to-transparent z-10" />
 
             <div className="flex h-fit gap-5 overflow-x-auto pb-4 px-1 scrollbar-hide">
-              
+
               <div className="min-w-[260px] h-full">
                 <div className="h-full">
                   <NewBoardButton orgId={orgId} />
@@ -73,7 +76,7 @@ export const BoardList = ({ orgId, query }: BoardListProps) => {
               </div>
 
 
-              
+
               {templates === undefined &&
                 Array.from({ length: 3 }).map((_, i) => (
                   <BoardCard.Skeleton key={i} />
@@ -126,7 +129,7 @@ export const BoardList = ({ orgId, query }: BoardListProps) => {
         </section>
       )}
 
-      
+
       {boards.length === 0 ? (
         <EmptyBoards />
       ) : (
