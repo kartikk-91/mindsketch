@@ -5,7 +5,7 @@ import { EmptyOrg } from "./_components/empty-org";
 import { useOrganization } from "@clerk/nextjs";
 import { useSearchParams } from "next/navigation";
 import { useMemo } from "react";
-import { useDashboard } from "./layout"; 
+import { useDashboard } from "./dashboard-context";
 export const dynamic = "force-dynamic";
 
 const DashboardPage = () => {

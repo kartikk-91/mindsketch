@@ -5,18 +5,14 @@ import { cn } from "@/lib/utils";
 import { OrganizationSwitcher } from "@clerk/nextjs";
 import { LayoutDashboard, Star } from "lucide-react";
 import Image from "next/image";
+import { useDashboard } from "../dashboard-context"; 
 
-type DashboardView = "all" | "favorites";
+export const OrgSidebar = () => {
+  const { view, setView } = useDashboard(); 
 
-type OrgSidebarProps = {
-  view: DashboardView;
-  setView: (view: DashboardView) => void;
-};
-
-export const OrgSidebar = ({ view, setView }: OrgSidebarProps) => {
   return (
     <aside className="hidden lg:flex h-full w-[240px] flex-col border-r border-slate-200 bg-white px-5 pt-5">
-      
+    
       <div className="mb-7">
         <div className="flex items-center px-2">
           <Image
@@ -29,7 +25,7 @@ export const OrgSidebar = ({ view, setView }: OrgSidebarProps) => {
         </div>
       </div>
 
-      
+     
       <div className="mb-7">
         <OrganizationSwitcher
           hidePersonal
@@ -43,7 +39,7 @@ export const OrgSidebar = ({ view, setView }: OrgSidebarProps) => {
         />
       </div>
 
-      
+    
       <nav className="flex flex-col gap-1.5">
         <SidebarItem
           onClick={() => setView("all")}
