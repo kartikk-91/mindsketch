@@ -2,10 +2,11 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { OrganizationSwitcher, UserButton } from "@clerk/nextjs";
 import { LayoutDashboard, Star} from "lucide-react";
 import Image from "next/image";
-import { useDashboard } from "../dashboard-context"; 
+import { useDashboard } from "../dashboard-context";
+import { UserMenu } from "@/components/user-menu";
+import { OrganizationSwitcher } from "@/components/organization-switcher"; 
 
 export const OrgSidebar = () => {
   const { view, setView } = useDashboard(); 
@@ -31,18 +32,7 @@ export const OrgSidebar = () => {
         <p className="text-[11px] font-semibold text-[#999AA1] uppercase tracking-wider mb-2 px-2">
           Workspace
         </p>
-        <OrganizationSwitcher
-          hidePersonal
-          appearance={{
-            elements: {
-              rootBox: "w-full",
-              organizationSwitcherTrigger:
-                "flex w-full items-center justify-between rounded-xl border border-[#EEEEEE] bg-white px-3 py-2.5 text-[14px] text-[#181C31] font-medium hover:border-[#20C5A8]/30 hover:bg-[#F1FEE1]/30 transition-all",
-              organizationSwitcherTriggerIcon:
-                "text-[#999AA1]",
-            },
-          }}
-        />
+        <OrganizationSwitcher variant="desktop" />
       </div>
 
       
@@ -72,17 +62,7 @@ export const OrgSidebar = () => {
       
       <div className="px-4 py-4 border-t border-[#EEEEEE]">
         <div className="flex items-center gap-3">
-          <UserButton
-            afterSignOutUrl="/sign-in"
-            appearance={{
-              elements: {
-                userButtonTrigger:
-                  "rounded-full transition focus:outline-none focus:ring-2 focus:ring-[#20C5A8] focus:ring-offset-2",
-                avatarBox:
-                  "h-8 w-8 rounded-full ring-1 ring-[#EEEEEE]",
-              },
-            }}
-          />
+          <UserMenu />
           <div className="flex flex-col min-w-0">
             <p className="text-[13px] font-medium text-[#181C31] truncate">
               Mindsketch

@@ -1,8 +1,6 @@
 "use client";
 
-import {
-  OrganizationSwitcher,
-} from "@clerk/nextjs";
+import { OrganizationSwitcher } from "@/components/organization-switcher";
 import { SearchInput } from "./search-input";
 import { Sparkles } from "lucide-react";
 
@@ -26,28 +24,7 @@ export const Navbar = () => {
 
         
         <div className="flex lg:hidden">
-          <OrganizationSwitcher
-            hidePersonal
-            appearance={{
-              elements: {
-                rootBox: "w-full max-w-[280px]",
-                organizationSwitcherTrigger:
-                  "flex items-center gap-2 rounded-xl border border-[#EEEEEE] bg-white px-3 py-2 text-sm text-[#181C31] font-medium hover:border-[#20C5A8]/30 transition",
-                organizationSwitcherTriggerIcon:
-                  "text-[#999AA1]",
-                organizationSwitcherPopoverCard:
-                  "mt-2 w-[320px] rounded-2xl border border-[#EEEEEE] bg-white shadow-lg overflow-hidden",
-                organizationSwitcherPopoverMain:
-                  "p-2 space-y-1",
-                organizationSwitcherPopoverActionButton:
-                  "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-[#696969] hover:bg-[#FBFBFB] transition",
-                organizationSwitcherPopoverActionButtonIcon:
-                  "text-[#999AA1]",
-                organizationSwitcherPopoverActionButtonText:
-                  "font-medium",
-              },
-            }}
-          />
+          <OrganizationSwitcher variant="mobile" />
         </div>
       </div>
     </header>

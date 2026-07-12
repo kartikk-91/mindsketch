@@ -1,10 +1,11 @@
 "use client";
 
-import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
-import { CreateOrganization } from "@clerk/nextjs";
+import { useState } from "react";
+import { CreateOrganizationModal } from "@/components/create-organization-modal";
 import { Building2, ArrowRight } from "lucide-react";
 
 export const EmptyOrg = () => {
+  const [createOrgOpen, setCreateOrgOpen] = useState(false);
   return (
     <div className="flex flex-col items-center justify-center py-20 px-4">
       <div className="max-w-sm w-full text-center">
@@ -26,20 +27,14 @@ export const EmptyOrg = () => {
         </p>
 
         <div className="mt-8">
-          <Dialog>
-            <DialogTrigger asChild>
-              <button className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-[#181C31] text-white text-sm font-semibold hover:bg-[#2C3149] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#20C5A8] focus-visible:ring-offset-2">
-                <Building2 className="h-4 w-4" />
-                Create organization
-                <ArrowRight className="h-4 w-4" />
-              </button>
-            </DialogTrigger>
-            <DialogContent className="p-0 bg-transparent border-none max-w-[480px]">
-              <CreateOrganization />
-            </DialogContent>
-          </Dialog>
+          <button onClick={() => setCreateOrgOpen(true)} className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-[#181C31] text-white text-sm font-semibold shadow-md shadow-[#181C31]/15 hover:bg-[#30364F] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#20C5A8] focus-visible:ring-offset-2">
+            <Building2 className="h-4 w-4" />
+            Create workspace
+            <ArrowRight className="h-4 w-4" />
+          </button>
         </div>
       </div>
+      <CreateOrganizationModal open={createOrgOpen} onOpenChange={setCreateOrgOpen} />
     </div>
   );
 };
