@@ -61,7 +61,7 @@ export const SelectionBox = memo(
               y1={bounds.y}
               x2={rotateHandleX}
               y2={rotateHandleY}
-              stroke="#2563eb"
+              stroke="#20C5A8"
               strokeWidth={1}
               pointerEvents="none"
             />
@@ -70,7 +70,7 @@ export const SelectionBox = memo(
               cy={rotateHandleY}
               r={6}
               fill="white"
-              stroke="#2563eb"
+              stroke="#20C5A8"
               strokeWidth={2}
               style={{ cursor: "grab" }}
               onPointerDown={(e) => {
@@ -83,7 +83,7 @@ export const SelectionBox = memo(
 
         
                 <rect
-          className="fill-white stroke-1 stroke-blue-500"
+          className="fill-white stroke-1 stroke-[#20C5A8]"
           style={{
             cursor: rotatedResizeCursor("nwse", rotation),
             width: `${HANDLE_WIDTH}px`,
@@ -101,7 +101,7 @@ export const SelectionBox = memo(
         />
 
                 <rect
-          className="fill-white stroke-1 stroke-blue-500"
+          className="fill-white stroke-1 stroke-[#20C5A8]"
           style={{
             cursor: rotatedResizeCursor("ns", rotation),
             width: `${HANDLE_WIDTH}px`,
@@ -119,7 +119,7 @@ export const SelectionBox = memo(
         />
 
                 <rect
-          className="fill-white stroke-1 stroke-blue-500"
+          className="fill-white stroke-1 stroke-[#20C5A8]"
           style={{
             cursor: rotatedResizeCursor("nesw", rotation),
             width: `${HANDLE_WIDTH}px`,
@@ -137,7 +137,7 @@ export const SelectionBox = memo(
         />
 
                 <rect
-          className="fill-white stroke-1 stroke-blue-500"
+          className="fill-white stroke-1 stroke-[#20C5A8]"
           style={{
             cursor: rotatedResizeCursor("ew", rotation),
             width: `${HANDLE_WIDTH}px`,
@@ -155,7 +155,7 @@ export const SelectionBox = memo(
         />
 
                 <rect
-          className="fill-white stroke-1 stroke-blue-500"
+          className="fill-white stroke-1 stroke-[#20C5A8]"
           style={{
             cursor: rotatedResizeCursor("nwse", rotation),
             width: `${HANDLE_WIDTH}px`,
@@ -173,7 +173,7 @@ export const SelectionBox = memo(
         />
 
                 <rect
-          className="fill-white stroke-1 stroke-blue-500"
+          className="fill-white stroke-1 stroke-[#20C5A8]"
           style={{
             cursor: rotatedResizeCursor("ns", rotation),
             width: `${HANDLE_WIDTH}px`,
@@ -191,7 +191,7 @@ export const SelectionBox = memo(
         />
 
                 <rect
-          className="fill-white stroke-1 stroke-blue-500"
+          className="fill-white stroke-1 stroke-[#20C5A8]"
           style={{
             cursor: rotatedResizeCursor("nesw", rotation),
             width: `${HANDLE_WIDTH}px`,
@@ -209,7 +209,7 @@ export const SelectionBox = memo(
         />
 
                 <rect
-          className="fill-white stroke-1 stroke-blue-500"
+          className="fill-white stroke-1 stroke-[#20C5A8]"
           style={{
             cursor: rotatedResizeCursor("ew", rotation),
             width: `${HANDLE_WIDTH}px`,

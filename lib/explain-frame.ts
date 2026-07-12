@@ -1,4 +1,3 @@
-// @ts-expect-error: No types for 'dom-to-image-more'
 import * as domtoimage from "dom-to-image-more";
 
 async function inlineImages(root: HTMLElement) {
@@ -61,6 +60,34 @@ export async function getFrameBase64(): Promise<string | null> {
     });
 
     return dataUrl.replace(/^data:image\/png;base64,/, "");
+  } catch (err) {
+    console.error("Frame capture failed", err);
+    return null;
+  } finally {
+    clone.remove();
+  }
+}
+
+/**
+ * Fast JPEG capture for chat — lower resolution, smaller payload.
+ * Returns { imageBase64, mimeType } for direct API use.
+ */
+export async function getFrameForChat(): Promise<{ imageBase64: string; mimeType: string } | null> {
+  const clone = createExportClone();
+  if (!clone) return null;
+  await inlineImages(clone);
+  try {
+    const dataUrl = await domtoimage.toJpeg(clone, {
+      bgcolor: "#ffffff",
+      scale: 1,
+      quality: 0.7,
+      cacheBust: true,
+    });
+
+    return {
+      imageBase64: dataUrl.replace(/^data:image\/jpeg;base64,/, ""),
+      mimeType: "image/jpeg",
+    };
   } catch (err) {
     console.error("Frame capture failed", err);
     return null;

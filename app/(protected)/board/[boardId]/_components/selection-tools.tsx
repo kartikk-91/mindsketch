@@ -1,8 +1,9 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 "use client";
 
 import { useSelectionBounds } from "@/hooks/use-selection-bounds";
-import { Camera, Color, LayerType, ShapeType } from "@/types/canvas";
+import { Camera, Color, LayerType, NoteFontFamily, ShapeType } from "@/types/canvas";
 import { useSelf, useMutation, useStorage } from "@liveblocks/react";
 import { memo } from "react";
 import { ColorPicker } from "./color-picker";
@@ -16,6 +17,8 @@ import {
   AlignLeft,
   AlignCenter,
   AlignRight,
+  Bold,
+  ChevronDown,
 } from "lucide-react";
 import { ColorToCSS } from "@/lib/utils";
 
@@ -26,6 +29,22 @@ const nextAlign = (
   if (align === "center") return "right";
   return "left";
 };
+
+const FONT_OPTIONS: { value: NoteFontFamily; label: string }[] = [
+  { value: "kalam", label: "Handwriting" },
+  { value: "inter", label: "Sans" },
+  { value: "nunito", label: "Rounded" },
+  { value: "serif", label: "Serif" },
+  { value: "mono", label: "Mono" },
+];
+
+const SIZE_PRESETS = [
+  { value: 12, label: "XS" },
+  { value: 16, label: "SM" },
+  { value: 20, label: "MD" },
+  { value: 28, label: "LG" },
+  { value: 40, label: "XL" },
+];
 
 interface SelectionToolsProps {
   camera: Camera;
@@ -54,9 +73,26 @@ export const SelectionTools = memo(
 
     const isPath = selectedLayer?.type === LayerType.Path;
     const isText = selectedLayer?.type === LayerType.Text;
+    const isNote = selectedLayer?.type === LayerType.Note;
+    const hasText = isText || isNote;
 
     const currentTextAlign =
-      isText ? selectedLayer.textAlign ?? "center" : null;
+      isText ? selectedLayer.textAlign ?? "center"
+      : isNote ? selectedLayer.textAlign ?? "left"
+      : null;
+
+    const currentFontFamily: NoteFontFamily =
+      isText ? (selectedLayer as any).fontFamily ?? "kalam"
+      : isNote ? selectedLayer.fontFamily ?? "kalam"
+      : "kalam";
+
+    const currentFontSize: number =
+      isNote ? (typeof selectedLayer.fontSize === "number" ? selectedLayer.fontSize : 16) : 16;
+
+    const currentFontWeight: "regular" | "bold" =
+      isText ? (selectedLayer as any).fontWeight ?? "regular"
+      : isNote ? (selectedLayer as any).fontWeight ?? "regular"
+      : "regular";
 
     const canFill =
       selectedLayer?.type === LayerType.Shape && !isLineOrArrow ||
@@ -127,21 +163,59 @@ export const SelectionTools = memo(
 
     const toggleTextAlign = useMutation(
       ({ storage }) => {
-        if (!isText) return;
+        if (!isText && !isNote) return;
 
         const liveLayers = storage.get("layers");
         selection?.forEach((id) => {
           const layer = liveLayers.get(id);
           if (!layer) return;
 
-          if (layer.get("type") === LayerType.Text) {
+          if (layer.get("type") === LayerType.Text || layer.get("type") === LayerType.Note) {
+            const current = ((layer as any).get("textAlign") ?? "left") as "left" | "center" | "right";
             layer.update({
-              textAlign: nextAlign(currentTextAlign!),
+              textAlign: nextAlign(current),
             });
           }
         });
       },
-      [selection, isText, currentTextAlign]
+      [selection, isText, isNote]
+    );
+
+    const setFontFamily = useMutation(
+      ({ storage }, font: NoteFontFamily) => {
+        const liveLayers = storage.get("layers");
+        selection?.forEach((id) => {
+          const layer = liveLayers.get(id);
+          if (!layer) return;
+          layer.update({ fontFamily: font } as any);
+        });
+      },
+      [selection]
+    );
+
+    const setFontSize = useMutation(
+      ({ storage }, size: number) => {
+        const liveLayers = storage.get("layers");
+        selection?.forEach((id) => {
+          const layer = liveLayers.get(id);
+          if (!layer) return;
+          layer.update({ fontSize: size } as any);
+        });
+      },
+      [selection]
+    );
+
+    const toggleFontWeight = useMutation(
+      ({ storage }) => {
+        const next: "regular" | "bold" = currentFontWeight === "bold" ? "regular" : "bold";
+        const liveLayers = storage.get("layers");
+        selection?.forEach((id) => {
+          const layer = liveLayers.get(id);
+          if (!layer) return;
+          layer.update({ fontWeight: next } as any);
+        });
+      },
+      [selection, currentFontWeight]
     );
 
     const moveToBack = useMutation(
@@ -177,7 +251,7 @@ export const SelectionTools = memo(
     if (!selectionBounds || !selectedLayer) return null;
 
     return (
-      <div className="absolute top-[60px] h-28 ml-2 p-3 rounded-xl bg-white shadow-sm border flex items-center select-none gap-4">
+      <div className="absolute top-[60px] ml-2 p-3 rounded-xl bg-white shadow-sm border flex items-center select-none gap-4">
         {canFill && !isLineOrArrow && (
           <div className="flex flex-col gap-1 pr-2 mr-2 border-r border-neutral-200">
             <span className="text-xs text-neutral-500">Color</span>
@@ -224,6 +298,78 @@ export const SelectionTools = memo(
           </div>
         )}
 
+        
+        {hasText && (
+          <div className="flex flex-col gap-1.5 pr-2 mr-2 border-r border-neutral-200">
+            
+            <div className="flex items-center gap-2">
+              
+              {isNote ? (
+                <div className="flex flex-col gap-1">
+                  <span className="text-xs text-neutral-500">Font</span>
+                  <div className="relative">
+                    <select
+                      value={currentFontFamily}
+                      onChange={(e) => setFontFamily(e.target.value as NoteFontFamily)}
+                      className="appearance-none bg-white border border-neutral-300 rounded-md px-2 py-1 pr-6 text-xs font-medium text-neutral-700 cursor-pointer hover:border-neutral-400 focus:outline-none focus:ring-2 focus:ring-neutral-400"
+                    >
+                      {FONT_OPTIONS.map((opt) => (
+                        <option key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDown className="absolute right-1.5 top-1/2 -translate-y-1/2 h-3 w-3 text-neutral-400 pointer-events-none" />
+                  </div>
+                </div>
+              ) : (
+                <div className="flex flex-col gap-1">
+                  <span className="text-xs text-neutral-500">Font</span>
+                  <div className="px-2 py-1 text-xs font-medium text-neutral-700 bg-neutral-50 border border-neutral-300 rounded-md">
+                    Mono
+                  </div>
+                </div>
+              )}
+
+              <div className="flex flex-col gap-1">
+                <span className="text-xs text-neutral-500">Bold</span>
+                <button
+                  onClick={toggleFontWeight}
+                  className={`p-1.5 rounded-md border transition-colors ${
+                    currentFontWeight === "bold"
+                      ? "bg-neutral-900 text-white border-neutral-900"
+                      : "bg-white text-neutral-600 border-neutral-300 hover:border-neutral-400"
+                  }`}
+                >
+                  <Bold className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            </div>
+
+            
+            {isNote && (
+              <div className="flex flex-col gap-1">
+                <span className="text-xs text-neutral-500">Size</span>
+                <div className="flex gap-0.5">
+                  {SIZE_PRESETS.map((preset) => (
+                    <button
+                      key={preset.value}
+                      onClick={() => setFontSize(preset.value)}
+                      className={`px-1.5 py-1 text-[10px] font-medium rounded-md border transition-colors ${
+                        currentFontSize === preset.value
+                          ? "bg-neutral-900 text-white border-neutral-900"
+                          : "bg-white text-neutral-600 border-neutral-300 hover:border-neutral-400"
+                      }`}
+                    >
+                      {preset.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         <div className="flex flex-col gap-y-0.5">
           <Hint label="Bring to Front">
             <Button variant="board" size="icon" onClick={moveToFront}>
@@ -239,7 +385,7 @@ export const SelectionTools = memo(
         </div>
 
         <div className="flex flex-col items-center pl-2 ml-2 border-l h-full border-neutral-200 gap-1">
-          {isText && (
+          {(isText || isNote) && (
             <Hint label={`Align: ${currentTextAlign}`}>
               <Button
                 variant="board"

@@ -11,15 +11,12 @@ import {
   JetBrains_Mono,
   Lora,
 } from "next/font/google";
-import React from "react";
-
-
 
 const kalam = Kalam({ subsets: ["latin"], weight: ["400"] });
-const inter = Inter({ subsets: ["latin"] });
-const nunito = Nunito({ subsets: ["latin"] });
-const mono = JetBrains_Mono({ subsets: ["latin"] });
-const serif = Lora({ subsets: ["latin"] });
+const inter = Inter({ subsets: ["latin"], weight: ["400", "700"] });
+const nunito = Nunito({ subsets: ["latin"], weight: ["400", "700"] });
+const mono = JetBrains_Mono({ subsets: ["latin"], weight: ["400", "700"] });
+const serif = Lora({ subsets: ["latin"], weight: ["400", "700"] });
 
 const fonts: Record<NoteFontFamily, { className: string }> = {
   kalam,
@@ -56,6 +53,7 @@ export function Note({
     rotation = 0,
     fontFamily = "kalam",
     fontSize = 16,
+    fontWeight = "regular",
     padding = 14,
   } = layer;
 
@@ -147,6 +145,7 @@ export function Note({
             style={{
               padding,
               fontSize,
+              fontWeight: fontWeight === "bold" ? 700 : 400,
               lineHeight: 1.55,
               color: fill
                 ? getContrastingTextColor(fill)

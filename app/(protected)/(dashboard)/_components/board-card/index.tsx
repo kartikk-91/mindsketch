@@ -9,9 +9,9 @@ import { Footer } from "./footer";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Actions } from "@/components/actions";
 import { MoreHorizontal } from "lucide-react";
-import { useApiMutation } from "@/hooks/use-api-mutation";
-import { api } from "@/convex/_generated/api";
+import { useFavoriteBoard } from "@/hooks/use-favorite-board";
 import { toast } from "sonner";
+import { useState } from "react";
 
 interface BoardCardProps {
   id: string;
@@ -44,20 +44,21 @@ export const BoardCard = ({
       ? formatDistanceToNow(createdAt, { addSuffix: true })
       : "";
 
-  const { mutate: onFavorite, pending: pendingFavorite } = useApiMutation(
-    api.board.favorite
-  );
-  const { mutate: onUnfavorite, pending: pendingUnfavorite } = useApiMutation(
-    api.board.unfavorite
-  );
+  const { favorite, unfavorite } = useFavoriteBoard();
+  const [pendingFavorite, setPendingFavorite] = useState(false);
 
-  const toggleFavorite = () => {
-    if (isFavorite) {
-      onUnfavorite({ id }).catch(() => toast.error("Failed to unfavorite"));
-    } else {
-      onFavorite({ id, orgId }).catch(() =>
-        toast.error("Failed to favorite")
-      );
+  const toggleFavorite = async () => {
+    setPendingFavorite(true);
+    try {
+      if (isFavorite) {
+        await unfavorite(id);
+      } else {
+        await favorite(id, orgId);
+      }
+    } catch {
+      toast.error(isFavorite ? "Failed to unfavorite" : "Failed to favorite");
+    } finally {
+      setPendingFavorite(false);
     }
   };
 
@@ -88,7 +89,7 @@ export const BoardCard = ({
         authorLabel={authorLabel}
         createdAtLabel={createdAtLabel}
         onClick={toggleFavorite}
-        disabled={pendingFavorite || pendingUnfavorite || disableLink}
+        disabled={pendingFavorite || disableLink}
         authorName={authorName}
       />
     </div>

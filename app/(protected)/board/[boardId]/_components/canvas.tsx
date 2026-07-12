@@ -23,7 +23,6 @@ import { Path } from "./path";
 import { useDisableScrollBounce } from "@/hooks/use-disable-scroll-bounce";
 import { useDeleteLayers } from "@/hooks/use-delete-layers";
 import ShareActions from "./share-actions";
-// import { useExportTemplate } from "@/hooks/use-export-template";
 
 
 
@@ -201,6 +200,20 @@ export const Canvas = ({ boardId }: CanvasProps) => {
         return () => document.removeEventListener("keydown", onKeyDown);
     }, [copySelectedLayers, pasteLayers, deleteLayers, history]);
 
+    useEffect(() => {
+        function onImageUploaded(e: Event) {
+            const detail = (e as CustomEvent<{ secure_url: string; width: number; height: number }>).detail;
+            setCanvasState({
+                mode: CanvasMode.Inserting,
+                layertype: LayerType.Image,
+                imageSrc: detail.secure_url,
+            });
+        }
+
+        window.addEventListener("mindsketch:image-uploaded", onImageUploaded);
+        return () => window.removeEventListener("mindsketch:image-uploaded", onImageUploaded);
+    }, []);
+
 
     const insertLayer = useMutation(
         (
@@ -251,12 +264,15 @@ export const Canvas = ({ boardId }: CanvasProps) => {
             const liveLayerIds = storage.get("layerIds");
             const layerId = nanoid();
 
+            const DEFAULT_WIDTH = 300;
+            const DEFAULT_HEIGHT = 200;
+
             const layer = new LiveObject({
                 type: LayerType.Image,
-                x: position.x,
-                y: position.y,
-                width: 300,
-                height: 200,
+                x: position.x - DEFAULT_WIDTH / 2,
+                y: position.y - DEFAULT_HEIGHT / 2,
+                width: DEFAULT_WIDTH,
+                height: DEFAULT_HEIGHT,
                 src: (canvasState as any).imageSrc,
             });
 
@@ -433,11 +449,7 @@ export const Canvas = ({ boardId }: CanvasProps) => {
             const layer = liveLayers.get(id);
             if (!layer) return;
 
-            let rotation = 0;
-            if (layer.get("type") === LayerType.Shape) {
-                const shapeLayer = layer as unknown as LiveObject<ShapeLayer>;
-                rotation = Number(shapeLayer.get("rotation") ?? 0);
-            }
+            const rotation = Number((layer as any).get("rotation") ?? 0);
 
             const { x, y, width, height } = canvasState.intialBounds;
 
@@ -975,7 +987,7 @@ export const Canvas = ({ boardId }: CanvasProps) => {
                         {
                             canvasState.mode === CanvasMode.SelectionNet && canvasState.current != null && (
                                 <rect
-                                    className="fill-blue-500/5 stroke-blue-500 stroke-1"
+                                    className="fill-[#20C5A8]/5 stroke-[#20C5A8] stroke-1"
                                     x={Math.min(canvasState.origin.x, canvasState.current.x)}
                                     y={Math.min(canvasState.origin.y, canvasState.current.y)}
                                     width={Math.abs(canvasState.origin.x - canvasState.current.x)}

@@ -4,7 +4,7 @@ import { DropdownMenuContentProps } from "@radix-ui/react-dropdown-menu";
 import {
   Link2,
   Pencil,
-  Trash2
+  Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -12,20 +12,15 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuTrigger,
-  DropdownMenuItem
+  DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
 
-import { Button } from "./ui/button";
 import { ConfirmModal } from "./confirm-modal";
 
-import { useApiMutation } from "@/hooks/use-api-mutation";
+import { useDeleteBoard } from "@/hooks/use-delete-board";
 import { useRenameModal } from "@/store/use-rename-modal";
-import { api } from "@/convex/_generated/api";
 import { useRouter } from "next/navigation";
-
-
-
-
+import { useState } from "react";
 
 interface ActionProps {
   children: React.ReactNode;
@@ -44,29 +39,28 @@ export const Actions = ({
 }: ActionProps) => {
   const router = useRouter();
   const { onOpen } = useRenameModal();
-  const { mutate, pending } = useApiMutation(api.board.remove);
+  const { deleteBoard } = useDeleteBoard();
+  const [pending, setPending] = useState(false);
 
-  const onDelete = () => {
-    mutate({ id })
-      .then(() => {
-        toast.success("Board deleted successfully");
-        router.push("/");
-        router.refresh();
-      })
-      .catch(() => {
-        toast.error("Failed to delete board");
-      });
+  const onDelete = async () => {
+    setPending(true);
+    try {
+      await deleteBoard(id);
+      toast.success("Board deleted");
+      router.push("/");
+    } catch {
+      toast.error("Couldn't delete board");
+    } finally {
+      setPending(false);
+    }
   };
 
   const handleCopyLink = () => {
     navigator.clipboard
       .writeText(`${window.location.origin}/board/${id}`)
-      .then(() => toast.success("Link copied to clipboard"))
+      .then(() => toast.success("Link copied!"))
       .catch(() => toast.error("Failed to copy link"));
   };
-
-
-
 
   return (
     <DropdownMenu>
@@ -78,40 +72,44 @@ export const Actions = ({
         side={side}
         sideOffset={sideOffset}
         onClick={(e) => e.stopPropagation()}
-        className="w-60 bg-white"
+        className="w-56 bg-white border border-[#EEEEEE] rounded-xl p-1.5 shadow-[0_8px_30px_rgba(0,0,0,0.08)]"
       >
-                <DropdownMenuItem
+        <DropdownMenuItem
           onClick={handleCopyLink}
-          className="p-3 cursor-pointer"
+          className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-[#181C31] cursor-pointer hover:bg-[#FBFBFB] transition-colors focus-visible:outline-none focus-visible:bg-[#FBFBFB]"
         >
-          <Link2 className="h-4 w-4 mr-2" />
+          <span className="flex items-center justify-center w-7 h-7 rounded-md bg-[#FBFBFB]">
+            <Link2 className="h-3.5 w-3.5 text-[#696969]" />
+          </span>
           Copy board link
         </DropdownMenuItem>
 
-       
-        
-
-                <DropdownMenuItem
+        <DropdownMenuItem
           onClick={() => onOpen(id, title)}
-          className="p-3 cursor-pointer"
+          className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-[#181C31] cursor-pointer hover:bg-[#FBFBFB] transition-colors focus-visible:outline-none focus-visible:bg-[#FBFBFB]"
         >
-          <Pencil className="h-4 w-4 mr-2" />
+          <span className="flex items-center justify-center w-7 h-7 rounded-md bg-[#FBFBFB]">
+            <Pencil className="h-3.5 w-3.5 text-[#696969]" />
+          </span>
           Rename
         </DropdownMenuItem>
 
-                <ConfirmModal
+        <div className="h-px bg-[#EEEEEE] my-1 mx-2" />
+
+        <ConfirmModal
           onConfirm={onDelete}
           disabled={pending}
           header="Delete board?"
-          description={`Are you sure you want to delete "${title}" board?`}
+          description={`Are you sure you want to delete "${title}"? This can't be undone.`}
         >
-          <Button
-            variant="ghost"
-            className="p-3 cursor-pointer text-sm w-full justify-start font-normal"
+          <button
+            className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-red-600 cursor-pointer hover:bg-red-50 transition-colors focus-visible:outline-none focus-visible:bg-red-50"
           >
-            <Trash2 className="h-4 w-4 mr-2" />
+            <span className="flex items-center justify-center w-7 h-7 rounded-md bg-red-50">
+              <Trash2 className="h-3.5 w-3.5 text-red-500" />
+            </span>
             Delete board
-          </Button>
+          </button>
         </ConfirmModal>
       </DropdownMenuContent>
     </DropdownMenu>

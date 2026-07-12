@@ -4,9 +4,7 @@ import { Canvas } from "./_components/canvas";
 import { Room } from "@/components/room";
 import { Loading } from "./_components/loading";
 import { useEffect, useState } from "react";
-import { useQuery } from "convex/react";
-import { api } from "@/convex/_generated/api";
-import { Id } from "@/convex/_generated/dataModel";
+import { useBoard } from "@/hooks/use-board";
 
 export default function BoardPage({
   params,
@@ -24,21 +22,18 @@ export default function BoardPage({
     resolveParams();
   }, [params]);
 
-  const board = useQuery(
-    api.board.get,
-    resolvedParams
-      ? { id: resolvedParams.boardId as Id<"boards"> }
-      : "skip"
+  const { data: board, isLoading: loading } = useBoard(
+    resolvedParams?.boardId ?? ""
   );
 
-  if (!resolvedParams || !board) {
+  if (!resolvedParams || loading || !board) {
     return <Loading />;
   }
 
   return (
     <Room
       roomId={resolvedParams.boardId}
-      templateId={board.templateId}
+      templateId={board.templateId || undefined}
       fallback={<Loading />}
     >
       <Canvas boardId={resolvedParams.boardId} />

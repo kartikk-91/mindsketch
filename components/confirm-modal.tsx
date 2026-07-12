@@ -27,21 +27,21 @@ export const ConfirmModal = ({ children, onConfirm, disabled, header, descriptio
             <AlertDialogTrigger asChild>
                 {children}
             </AlertDialogTrigger>
-            <AlertDialogContent className="bg-white">
+            <AlertDialogContent className="bg-white border border-[#EEEEEE] rounded-2xl shadow-[0_20px_60px_rgba(0,0,0,0.08)]">
                 <AlertDialogHeader>
-                    <AlertDialogTitle>
+                    <AlertDialogTitle className="text-[#181C31] text-lg font-bold">
                         {header}
                     </AlertDialogTitle>
-                    <AlertDialogDescription>
+                    <AlertDialogDescription className="text-[#696969] text-sm leading-relaxed">
                         {description}
                     </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
-                    <AlertDialogCancel>
+                    <AlertDialogCancel className="rounded-xl border-[#EEEEEE] text-[#696969] hover:bg-[#FBFBFB] hover:text-[#181C31]">
                         Cancel
                     </AlertDialogCancel>
-                    <AlertDialogAction onClick={onConfirm} disabled={disabled}>
-                        Confirm
+                    <AlertDialogAction onClick={onConfirm} disabled={disabled} className="rounded-xl bg-red-500 hover:bg-red-600 text-white">
+                        Delete
                     </AlertDialogAction>
                 </AlertDialogFooter>
             </AlertDialogContent>

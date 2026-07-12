@@ -1,30 +1,35 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { api } from "@/convex/_generated/api";
-import { useApiMutation } from "@/hooks/use-api-mutation";
+import { useCreateBoard } from "@/hooks/use-create-board";
 import { useOrganization } from "@clerk/nextjs";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { useState } from "react";
 
 export const EmptyBoards = () => {
   const router = useRouter();
-  const { mutate, pending } = useApiMutation(api.board.create);
+  const { createBoard } = useCreateBoard();
   const { organization } = useOrganization();
+  const [pending, setPending] = useState(false);
 
-  const onClick = () => {
+  const onClick = async () => {
     if (!organization) return;
 
-    mutate({
-      title: "Untitled",
-      orgId: organization.id,
-    })
-      .then((id) => {
-        toast.success("Board created");
-        router.push(`/board/${id}`);
-      })
-      .catch(() => toast.error("Failed to create board"));
+    setPending(true);
+    try {
+      const board = await createBoard({
+        title: "Untitled",
+        orgId: organization.id,
+      });
+      toast.success("Board created");
+      router.push(`/board/${board.id}`);
+    } catch {
+      toast.error("Failed to create board");
+    } finally {
+      setPending(false);
+    }
   };
 
   return (

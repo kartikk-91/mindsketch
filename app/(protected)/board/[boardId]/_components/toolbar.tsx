@@ -34,9 +34,8 @@ import {
   ShapeType,
 } from "@/types/canvas";
 import { useRef, useState, useEffect } from "react";
-import { useAction, useQuery } from "convex/react";
-import { api } from "@/convex/_generated/api";
 import { CylinderIcon, ParallelogramIcon } from "./shape.icons";
+import { useImageUpload } from "@/hooks/use-image-upload";
 
 interface ToolbarProps {
   canvasState: CanvasState;
@@ -64,34 +63,10 @@ export const Toolbar = ({
   resetZoom,
 }: ToolbarProps) => {
 
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const shapePopoverRef = useRef<HTMLDivElement>(null);
 
-  const uploadImage = useAction(api.images.uploadImage);
-
-  const [pendingImageId, setPendingImageId] = useState<string | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
   const [isShapeOpen, setIsShapeOpen] = useState(false);
-
-  const imageUrl = useQuery(
-    api.images.getImageUrl,
-    pendingImageId ? { storageId: pendingImageId } : "skip"
-  );
-
-
-
-  useEffect(() => {
-    if (!imageUrl) return;
-
-    setCanvasState({
-      mode: CanvasMode.Inserting,
-      layertype: LayerType.Image,
-      imageSrc: imageUrl,
-    });
-
-    setPendingImageId(null);
-    setIsUploading(false);
-  }, [imageUrl, setCanvasState]);
+  const { pickImage, isUploading } = useImageUpload();
 
 
 
@@ -216,7 +191,7 @@ export const Toolbar = ({
           <ToolButton
             label={isUploading ? "Uploading..." : "Image"}
             icon={isUploading ? Loader2 : ImageIcon}
-            onClick={() => fileInputRef.current?.click()}
+            onClick={pickImage}
             isDisabled={isUploading}
             isActive={
               canvasState.mode === CanvasMode.Inserting &&
@@ -229,28 +204,6 @@ export const Toolbar = ({
             icon={Pencil}
             onClick={() => setCanvasState({ mode: CanvasMode.Pencil })}
             isActive={canvasState.mode === CanvasMode.Pencil}
-          />
-
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={async (e) => {
-              const file = e.target.files?.[0];
-              if (!file) return;
-
-              setIsUploading(true);
-              const buffer = await file.arrayBuffer();
-
-              const { storageId } = await uploadImage({
-                file: buffer,
-                contentType: file.type,
-              });
-
-              setPendingImageId(storageId);
-              e.target.value = "";
-            }}
           />
         </div>
 

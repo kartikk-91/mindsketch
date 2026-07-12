@@ -1,21 +1,7 @@
-import "dotenv";
+import "dotenv/config";
 import fs from "node:fs";
 import path from "node:path";
-import { ConvexHttpClient } from "convex/browser";
-import { api } from "../convex/_generated/api";
-import { configDotenv } from "dotenv";
-
-configDotenv({
-    path: path.resolve(process.cwd(), ".env.local"),
-});
-
-const CONVEX_URL = process.env.NEXT_PUBLIC_CONVEX_URL;
-
-if (!CONVEX_URL) {
-    throw new Error("NEXT_PUBLIC_CONVEX_URL is not set");
-}
-
-const client = new ConvexHttpClient(CONVEX_URL);
+import { prisma } from "../lib/prisma";
 
 async function seedTemplates() {
     const templatesDir = path.join(process.cwd(), "templates");
@@ -29,6 +15,12 @@ async function seedTemplates() {
         return;
     }
 
+    const existingTemplates = await prisma.template.count();
+    if (existingTemplates > 0) {
+        console.log("Templates already seeded. Skipping.");
+        return;
+    }
+
     const templates = files.map((file) => {
         const raw = fs.readFileSync(
             path.join(templatesDir, file),
@@ -39,14 +31,24 @@ async function seedTemplates() {
 
     console.log(`Seeding ${templates.length} templates…`);
 
-    const result = await client.mutation(api.templates.seedMany, {
-        templates,
-    });
+    for (const template of templates) {
+        await prisma.template.create({
+            data: {
+                name: template.name,
+                thumbnail: template.thumbnail,
+                snapshot: template.snapshot,
+            },
+        });
+    }
 
-    console.log(result);
+    console.log("Templates seeded successfully!");
 }
 
-seedTemplates().catch((err) => {
-    console.error(err);
-    process.exit(1);
-});
+seedTemplates()
+    .catch((err) => {
+        console.error(err);
+        process.exit(1);
+    })
+    .finally(() => {
+        prisma.$disconnect();
+    });

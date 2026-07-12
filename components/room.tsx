@@ -7,9 +7,7 @@ import {
 } from "@liveblocks/react/suspense";
 import { LiveMap, LiveList, LiveObject } from "@liveblocks/client";
 import { Layer } from "@/types/canvas";
-import { useQuery } from "convex/react";
-import { api } from "@/convex/_generated/api";
-import { Id } from "@/convex/_generated/dataModel";
+import { useTemplate } from "@/hooks/use-template";
 
 type TemplateSnapshot = {
   layerIds: string[];
@@ -20,7 +18,7 @@ interface RoomProps {
   children: ReactNode;
   roomId: string;
   fallback: NonNullable<ReactNode> | null;
-  templateId?: Id<"templates">;
+  templateId?: string;
 }
 
 export const Room = ({
@@ -29,10 +27,7 @@ export const Room = ({
   fallback,
   templateId,
 }: RoomProps) => {
-  const template = useQuery(
-    api.templates.get,
-    templateId ? { id: templateId } : "skip"
-  );
+  const { data: template, isLoading: loading } = useTemplate(templateId);
 
   const initialStorage = useMemo(() => {
    
@@ -56,7 +51,7 @@ export const Room = ({
     };
   }, [template]);
 
-  if (templateId && !template) {
+  if (templateId && loading) {
     return fallback;
   }
 

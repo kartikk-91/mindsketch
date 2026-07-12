@@ -1,4 +1,3 @@
-// hooks/use-export-template.ts
 import { useRoom } from "@liveblocks/react";
 import { Layer } from "@/types/canvas";
 import { LiveObject } from "@liveblocks/client";

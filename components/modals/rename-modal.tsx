@@ -12,27 +12,29 @@ import {Input} from "@/components/ui/input";
 import { useRenameModal } from "@/store/use-rename-modal";
 import { FormEventHandler, useEffect,useState } from "react";
 import { Button } from "../ui/button";
-import { useApiMutation } from "@/hooks/use-api-mutation";
-import { api } from "@/convex/_generated/api";
+import { useRenameBoard } from "@/hooks/use-rename-board";
 import { toast } from "sonner";
 
 export const RenameModal = () => {
-        const {mutate,pending}=useApiMutation(api.board.update);
         const { isOpen, onClose, intialValues } = useRenameModal();
+        const { renameBoard } = useRenameBoard();
+        const [pending, setPending] = useState(false);
         const [title, setTitle] = useState(intialValues.title);
         useEffect(() => {
             setTitle(intialValues.title);
         }, [intialValues.title]);
-        const onSubmit:FormEventHandler<HTMLFormElement> = (e) => {
+        const onSubmit:FormEventHandler<HTMLFormElement> = async (e) => {
             e.preventDefault();
-            mutate({ id: intialValues.id, title })
-                .then(() => {
-                    toast.success("Board renamed successfully");
-                    onClose();
-                })
-                .catch(() => {
-                    toast.error("Failed to rename board");
-                });
+            setPending(true);
+            try {
+                await renameBoard(intialValues.id, title);
+                toast.success("Board renamed successfully");
+                onClose();
+            } catch {
+                toast.error("Failed to rename board");
+            } finally {
+                setPending(false);
+            }
         };
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>

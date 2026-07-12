@@ -2,15 +2,22 @@
 
 import { cn, ColorToCSS } from "@/lib/utils";
 import { useMutation } from "@liveblocks/react";
-import { TextLayer } from "@/types/canvas";
-import { Kalam } from "next/font/google";
+import { NoteFontFamily, TextLayer } from "@/types/canvas";
+import {
+  JetBrains_Mono,
+} from "next/font/google";
 import ContentEditable, { ContentEditableEvent } from "react-contenteditable";
 import { useEffect, useRef } from "react";
 
-const font = Kalam({
-  subsets: ["latin"],
-  weight: ["400"],
-});
+const mono = JetBrains_Mono({ subsets: ["latin"], weight: ["400", "700"] });
+
+const fonts: Record<NoteFontFamily, { className: string }> = {
+  kalam: mono,
+  inter: mono,
+  nunito: mono,
+  mono,
+  serif: mono,
+};
 
 interface TextProps {
   id: string;
@@ -18,8 +25,6 @@ interface TextProps {
   onPointerDown: (e: React.PointerEvent, id: string) => void;
   selectionColor?: string;
 }
-
-
 
 const fitFontSize = (
   el: HTMLElement,
@@ -42,8 +47,6 @@ const fitFontSize = (
   return MIN;
 };
 
-
-
 export const Text = ({
   id,
   layer,
@@ -59,6 +62,8 @@ export const Text = ({
     value,
     rotation = 0,
     textAlign = "center",
+    fontFamily = "kalam",
+    fontWeight = "regular",
   } = layer;
 
   const cx = x + width / 2;
@@ -74,15 +79,15 @@ export const Text = ({
     updateValue(e.target.value);
   };
 
-  
-
   useEffect(() => {
     if (!contentRef.current) return;
 
     const el = contentRef.current;
     const fitted = fitFontSize(el, width, height);
     el.style.fontSize = `${fitted}px`;
-  }, [value, width, height, textAlign]);
+  }, [value, width, height, textAlign, fontFamily, fontWeight]);
+
+  const fontClass = fonts[fontFamily]?.className ?? fonts.kalam.className;
 
   return (
     <g transform={`rotate(${rotation} ${cx} ${cy})`}>
@@ -110,11 +115,12 @@ export const Text = ({
             textAlign === "left" && "justify-start text-left",
             textAlign === "center" && "justify-center text-center",
             textAlign === "right" && "justify-end text-right",
-            font.className
+            fontClass
           )}
           style={{
             color: fill ? ColorToCSS(fill) : "#000",
             lineHeight: 1.25,
+            fontWeight: fontWeight === "bold" ? 700 : 400,
           }}
         />
       </foreignObject>

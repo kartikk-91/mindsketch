@@ -1,4 +1,3 @@
-// @ts-expect-error: No types for 'dom-to-image-more'
 import * as domtoimage from "dom-to-image-more";
 import jsPDF from "jspdf";
 

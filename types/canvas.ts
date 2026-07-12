@@ -85,6 +85,8 @@ export type TextLayer = {
     value?: string;
     rotation?: number;
     textAlign: "left" | "center" | "right";
+    fontFamily?: NoteFontFamily;
+    fontWeight?: "regular" | "bold";
 };
 
 export type NoteFontFamily =
@@ -108,6 +110,7 @@ export type NoteLayer = {
 
   fontFamily: NoteFontFamily;
   fontSize: number | "auto";
+  fontWeight?: "regular" | "bold";
   textAlign: "left" | "center" | "right";
   verticalAlign: "top" | "center";
   padding: number;
