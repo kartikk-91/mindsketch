@@ -39,6 +39,8 @@ export const Path = ({
     <g transform={`rotate(${rotation} ${cx} ${cy}) translate(${x}, ${y})`}>
       <path
         className="drop-shadow-md"
+        data-export-stroke="none"
+        data-export-selected={stroke ? "true" : undefined}
         onPointerDown={onPointerDown}
         d={getSvgPathFromStroke(
           getStroke(points, {

@@ -968,13 +968,15 @@ export const Canvas = ({ boardId }: CanvasProps) => {
                         }}
                     >
 
-                        {
-                            layerIds && layerIds.map((layerId) => {
-                                return <LayerPreview key={layerId} id={layerId} onLayerPointerDown={onLayerPointerDown}
-                                    selectionColor={layerIdsToColorSelection[layerId]}
-                                />
-                            })
-                        }
+                        <g id="export-layers">
+                            {
+                                layerIds && layerIds.map((layerId) => {
+                                    return <LayerPreview key={layerId} id={layerId} onLayerPointerDown={onLayerPointerDown}
+                                        selectionColor={layerIdsToColorSelection[layerId]}
+                                    />
+                                })
+                            }
+                        </g>
                         <SelectionBox
                             onResizeHandlePointerDown={onResizeHandlePointerDown}
                             onRotateHandlePointerDown={onRotateHandlePointerDown}

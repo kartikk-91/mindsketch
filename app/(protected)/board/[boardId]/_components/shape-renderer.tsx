@@ -82,6 +82,7 @@ export const ShapeRenderer = ({
         strokeWidth: finalStrokeWidth + 2,
         opacity: 0.9,
         pointerEvents: "none" as const,
+        "data-export-exclude": "true",
       }
     : null;
 

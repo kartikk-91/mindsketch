@@ -87,6 +87,8 @@ export function Note({
         className="pointer-events-auto"
       >
         <div
+          data-export-note="true"
+          data-export-selected={selectionColor ? "true" : undefined}
           className={cn(
             "relative w-full h-full rounded-lg overflow-hidden",
            
@@ -100,6 +102,7 @@ export function Note({
           }}
         >
                     <div
+            data-export-decorative="true"
             className="absolute inset-0 pointer-events-none"
             style={{
               backgroundImage:
@@ -109,13 +112,14 @@ export function Note({
           />
 
                     <div
+            data-export-decorative="true"
             className="absolute inset-0 pointer-events-none"
             style={{
               boxShadow: "inset 0 1px 0 rgba(255,255,255,0.35)",
             }}
           />
 
-                    <div className="absolute top-0 right-0 w-0 h-0 pointer-events-none">
+                    <div data-export-decorative="true" className="absolute top-0 right-0 w-0 h-0 pointer-events-none">
                         <div
               className="absolute -left-[22px] top-0 w-0 h-0"
               style={{

@@ -19,6 +19,8 @@ export const Ellipse = ({
     return (
         <ellipse
             className="drop-shadow-md"
+            data-export-stroke={stroke ? ColorToCSS(stroke) : "transparent"}
+            data-export-selected={selectionColor ? "true" : undefined}
             style={{
                 transform: `translate(${x}px, ${y}px)`,
             }}

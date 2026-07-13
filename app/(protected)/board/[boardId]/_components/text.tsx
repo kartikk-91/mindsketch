@@ -92,6 +92,8 @@ export const Text = ({
   return (
     <g transform={`rotate(${rotation} ${cx} ${cy})`}>
       <foreignObject
+        data-export-text="true"
+        data-export-selected={selectionColor ? "true" : undefined}
         x={x}
         y={y}
         width={width}

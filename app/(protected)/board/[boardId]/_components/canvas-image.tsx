@@ -39,6 +39,7 @@ export const CanvasImage = memo(
 
                 {selectionColor && (
                     <rect
+                        data-export-exclude="true"
                         width={width}
                         height={height}
                         fill="none"

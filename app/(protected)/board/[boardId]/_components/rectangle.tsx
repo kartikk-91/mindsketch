@@ -19,6 +19,8 @@ export const Rectangle = ({
     return (
         <rect
             className="drop-shadow-md"
+            data-export-stroke={stroke ? ColorToCSS(stroke) : "transparent"}
+            data-export-selected={selectionColor ? "true" : undefined}
             onPointerDown={(e) => onPointerDown(e, id)}
             style={{
                 transform: `translate(${x}px,${y}px)`,
