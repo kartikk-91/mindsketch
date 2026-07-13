@@ -3,6 +3,9 @@
 
 import { ShapeLayer, ShapeType, Color } from "@/types/canvas";
 import { ColorToCSS } from "@/lib/utils";
+import ContentEditable, { ContentEditableEvent } from "react-contenteditable";
+import { useMutation } from "@liveblocks/react";
+import { useEffect, useRef, useState } from "react";
 
 interface ShapeRendererProps {
   id: string;
@@ -15,6 +18,34 @@ const BLACK = "#000000";
 
 const isTransparentColor = (c?: Color) =>
   !c || (c.r === -1 && c.g === -1 && c.b === -1);
+
+type RoutePoint = { x: number; y: number };
+
+const samePoint = (a: RoutePoint, b: RoutePoint) => a.x === b.x && a.y === b.y;
+
+/** Turns an orthogonal polyline into a route with softly rounded corners. */
+const roundedOrthogonalPath = (rawPoints: RoutePoint[]) => {
+  const points = rawPoints.filter((point, index) => index === 0 || !samePoint(point, rawPoints[index - 1]));
+  if (points.length < 2) return "";
+  let path = `M ${points[0].x} ${points[0].y}`;
+  for (let index = 1; index < points.length - 1; index++) {
+    const previous = points[index - 1];
+    const corner = points[index];
+    const next = points[index + 1];
+    const incoming = Math.hypot(corner.x - previous.x, corner.y - previous.y);
+    const outgoing = Math.hypot(next.x - corner.x, next.y - corner.y);
+    const radius = Math.min(14, incoming / 2, outgoing / 2);
+    if (radius < 1) {
+      path += ` L ${corner.x} ${corner.y}`;
+      continue;
+    }
+    const before = { x: corner.x + (previous.x - corner.x) * radius / incoming, y: corner.y + (previous.y - corner.y) * radius / incoming };
+    const after = { x: corner.x + (next.x - corner.x) * radius / outgoing, y: corner.y + (next.y - corner.y) * radius / outgoing };
+    path += ` L ${before.x} ${before.y} Q ${corner.x} ${corner.y} ${after.x} ${after.y}`;
+  }
+  const end = points[points.length - 1];
+  return `${path} L ${end.x} ${end.y}`;
+};
 
 export const ShapeRenderer = ({
   id,
@@ -33,7 +64,18 @@ export const ShapeRenderer = ({
     dashed,
     shape,
     rotation = 0,
+    opacity = 1,
   } = layer;
+  const [isEditing, setIsEditing] = useState(false);
+  const textRef = useRef<HTMLElement>(null);
+
+  const updateValue = useMutation(({ storage }, value: string) => {
+    storage.get("layers").get(id)?.set("value", value);
+  }, [id]);
+
+  useEffect(() => {
+    if (isEditing) textRef.current?.focus();
+  }, [isEditing]);
 
   const cx = x + width / 2;
   const cy = y + height / 2;
@@ -67,6 +109,7 @@ export const ShapeRenderer = ({
 
   const baseProps = {
     onPointerDown: (e: React.PointerEvent) => onPointerDown(e, id),
+    onDoubleClick: () => setIsEditing(true),
     fill: resolvedFill,
     stroke: resolvedStroke,
     strokeWidth: finalStrokeWidth,
@@ -91,7 +134,7 @@ export const ShapeRenderer = ({
   const renderShape = (props: any) => {
     switch (shape) {
       case ShapeType.Rectangle:
-        return <rect {...props} x={x} y={y} width={width} height={height} />;
+        return <rect {...props} x={x} y={y} width={width} height={height} rx={12} ry={12} />;
 
       case ShapeType.Ellipse:
         return (
@@ -122,7 +165,39 @@ export const ShapeRenderer = ({
         const y2 = y + height;
 
         const headLength = 12;
-        const angle = Math.atan2(y2 - y1, x2 - x1);
+        const inferredStartSide = Math.abs(x2 - x1) >= Math.abs(y2 - y1)
+          ? (x2 >= x1 ? 8 : 4)
+          : (y2 >= y1 ? 2 : 1);
+        const inferredEndSide = inferredStartSide === 4 ? 8 : inferredStartSide === 8 ? 4 : inferredStartSide === 1 ? 2 : 1;
+        // Some arrows created before border-side persistence have no side metadata.
+        // Infer it from the endpoints instead of defaulting to Bottom (which caused a bad target elbow).
+        const direction = (side: number) => side === 4 ? { x: -1, y: 0 } : side === 8 ? { x: 1, y: 0 } : side === 1 ? { x: 0, y: -1 } : { x: 0, y: 1 };
+        const startDirection = direction(layer.startSide ?? inferredStartSide);
+        const endDirection = direction(layer.endSide ?? inferredEndSide);
+        const distance = Math.hypot(x2 - x1, y2 - y1);
+        // Each connector visibly leaves the chosen border before it is allowed to turn.
+        const stub = Math.min(30, Math.max(14, distance * 0.18));
+        const startStub = { x: x1 + startDirection.x * stub, y: y1 + startDirection.y * stub };
+        const endStub = { x: x2 + endDirection.x * stub, y: y2 + endDirection.y * stub };
+        const startHorizontal = startDirection.x !== 0;
+        const endHorizontal = endDirection.x !== 0;
+        let middle: RoutePoint[];
+        if (startHorizontal === endHorizontal) {
+          if (startHorizontal) {
+            const middleX = (startStub.x + endStub.x) / 2;
+            middle = [{ x: middleX, y: startStub.y }, { x: middleX, y: endStub.y }];
+          } else {
+            const middleY = (startStub.y + endStub.y) / 2;
+            middle = [{ x: startStub.x, y: middleY }, { x: endStub.x, y: middleY }];
+          }
+        } else {
+          // One clean elbow is enough for perpendicular sides, matching familiar diagram tools.
+          middle = startHorizontal
+            ? [{ x: endStub.x, y: startStub.y }]
+            : [{ x: startStub.x, y: endStub.y }];
+        }
+        const route = roundedOrthogonalPath([{ x: x1, y: y1 }, startStub, ...middle, endStub, { x: x2, y: y2 }]);
+        const angle = Math.atan2(-endDirection.y, -endDirection.x);
 
         const hx1 = x2 - headLength * Math.cos(angle - Math.PI / 6);
         const hy1 = y2 - headLength * Math.sin(angle - Math.PI / 6);
@@ -134,9 +209,9 @@ export const ShapeRenderer = ({
             {...props}
             fill="none"
             stroke={props.stroke || BLACK}
-            d={`
-              M ${x1} ${y1}
-              L ${x2} ${y2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d={`${route}
               M ${x2} ${y2}
               L ${hx1} ${hy1}
               M ${x2} ${y2}
@@ -217,18 +292,17 @@ export const ShapeRenderer = ({
         );
 
       case ShapeType.Cylinder:
+        // One continuous silhouette avoids the stacked-ellipse look of the old cylinder.
         return (
-          <>
-            <ellipse {...props} cx={cx} cy={y} rx={width / 2} ry={height * 0.15} />
-            <rect {...props} x={x} y={y} width={width} height={height} />
-            <ellipse
-              {...props}
-              cx={cx}
-              cy={y + height}
-              rx={width / 2}
-              ry={height * 0.15}
-            />
-          </>
+          <path
+            {...props}
+            d={`M ${x} ${y + height * 0.16}
+              A ${width / 2} ${height * 0.16} 0 0 1 ${x + width} ${y + height * 0.16}
+              V ${y + height * 0.84}
+              A ${width / 2} ${height * 0.16} 0 0 1 ${x} ${y + height * 0.84} Z
+              M ${x} ${y + height * 0.16}
+              A ${width / 2} ${height * 0.16} 0 0 0 ${x + width} ${y + height * 0.16}`}
+          />
         );
 
       case ShapeType.Cloud:
@@ -257,9 +331,33 @@ export const ShapeRenderer = ({
   };
 
   return (
-    <g transform={`rotate(${rotation} ${cx} ${cy})`}>
+    <g transform={`rotate(${rotation} ${cx} ${cy})`} opacity={opacity}>
       {renderShape(baseProps)}
       {selectionProps && renderShape(selectionProps)}
+      {shape !== ShapeType.Line && shape !== ShapeType.Arrow && layer.value && !isEditing && (
+        <text x={cx} y={cy} textAnchor="middle" dominantBaseline="middle" fill="#171717" fontSize="14" fontWeight="500" pointerEvents="none">
+          {layer.value.replace(/<[^>]*>/g, "")}
+        </text>
+      )}
+      {shape !== ShapeType.Line && shape !== ShapeType.Arrow && isEditing && (
+        <foreignObject
+          x={x + 10}
+          y={y + 10}
+          width={Math.max(0, width - 20)}
+          height={Math.max(0, height - 20)}
+          pointerEvents="all"
+          onPointerDown={(event) => event.stopPropagation()}
+        >
+          <ContentEditable
+            innerRef={textRef as never}
+            html={layer.value || ""}
+            onChange={(event: ContentEditableEvent) => updateValue(event.target.value)}
+            onBlur={() => setIsEditing(false)}
+            className="flex h-full w-full items-center justify-center overflow-hidden break-words text-center text-sm font-medium text-neutral-900 outline-none"
+            style={{ pointerEvents: "auto" }}
+          />
+        </foreignObject>
+      )}
     </g>
   );
 };

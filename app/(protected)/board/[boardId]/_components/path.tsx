@@ -9,6 +9,8 @@ interface PathProps {
   onPointerDown?: (e: React.PointerEvent) => void;
   stroke?: string;
   rotation?: number;
+  size?: number;
+  opacity?: number;
 }
 
 export const Path = ({
@@ -19,6 +21,8 @@ export const Path = ({
   onPointerDown,
   stroke,
   rotation = 0,
+  size = 8,
+  opacity = 1,
 }: PathProps) => {
  
   const xs = points.map((p) => p[0]);
@@ -36,7 +40,7 @@ export const Path = ({
   const cy = y + minY + height / 2;
 
   return (
-    <g transform={`rotate(${rotation} ${cx} ${cy}) translate(${x}, ${y})`}>
+    <g transform={`rotate(${rotation} ${cx} ${cy}) translate(${x}, ${y})`} opacity={opacity}>
       <path
         className="drop-shadow-md"
         data-export-stroke="none"
@@ -44,7 +48,7 @@ export const Path = ({
         onPointerDown={onPointerDown}
         d={getSvgPathFromStroke(
           getStroke(points, {
-            size: 8,
+            size,
             thinning: 0.5,
             smoothing: 0.5,
             streamline: 0.5,

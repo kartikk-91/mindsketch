@@ -1,233 +1,105 @@
 "use client";
 
 import { useSelectionBounds } from "@/hooks/use-selection-bounds";
-import { Side, XYWH } from "@/types/canvas";
+import { Point, Side, XYWH } from "@/types/canvas";
 import { memo } from "react";
 
+interface SelectionFrame {
+  bounds: XYWH;
+  rotation: number;
+  translation: Point;
+}
+
 interface SelectionBoxProps {
-  onResizeHandlePointerDown: (corner: Side, intialBounds: XYWH) => void;
-
-  onRotateHandlePointerDown?: (
-    e: React.PointerEvent,
-    centerX: number,
-    centerY: number
-  ) => void;
-
+  onResizeHandlePointerDown: (corner: Side, initialBounds: XYWH) => void;
+  onRotateHandlePointerDown?: (e: React.PointerEvent, bounds: XYWH) => void;
   rotation?: number;
+  frame?: SelectionFrame | null;
 }
 
 const HANDLE_WIDTH = 8;
 const ROTATE_HANDLE_OFFSET = 28;
 
-function rotatedResizeCursor(
-  base: "ew" | "ns" | "nwse" | "nesw",
-  rotation: number
-) {
-  const angle = ((rotation % 360) + 360) % 360;
-  const snap = Math.round(angle / 90) % 4;
-
-  const order: Array<"ew" | "nesw" | "ns" | "nwse"> = [
-    "ew",
-    "nesw",
-    "ns",
-    "nwse",
-  ];
-
-  const index = order.indexOf(base);
-  return `${order[(index + snap) % 4]}-resize`;
+function rotatedResizeCursor(base: "ew" | "ns" | "nwse" | "nesw", rotation: number) {
+  const directions: Array<"ew" | "nesw" | "ns" | "nwse"> = ["ew", "nesw", "ns", "nwse"];
+  const index = directions.indexOf(base);
+  return `${directions[(index + Math.round(rotation / 45)) & 3]}-resize`;
 }
 
-export const SelectionBox = memo(
-  ({
-    onResizeHandlePointerDown,
-    onRotateHandlePointerDown,
-    rotation = 0,
-  }: SelectionBoxProps) => {
-    const bounds = useSelectionBounds();
-    if (!bounds) return null;
+export const SelectionBox = memo(({
+  onResizeHandlePointerDown,
+  onRotateHandlePointerDown,
+  rotation = 0,
+  frame,
+}: SelectionBoxProps) => {
+  const selectionBounds = useSelectionBounds();
+  const bounds = frame?.bounds ?? selectionBounds;
+  if (!bounds) return null;
 
-    const cx = bounds.x + bounds.width / 2;
-    const cy = bounds.y + bounds.height / 2;
+  const boxRotation = frame?.rotation ?? rotation;
+  const cx = bounds.x + bounds.width / 2;
+  const cy = bounds.y + bounds.height / 2;
+  const transform = frame
+    ? `translate(${frame.translation.x} ${frame.translation.y}) rotate(${frame.rotation})`
+    : `rotate(${boxRotation} ${cx} ${cy})`;
+  const handles: Array<{ side: Side; x: number; y: number; cursor: "ew" | "ns" | "nwse" | "nesw" }> = [
+    { side: Side.Top + Side.Left, x: bounds.x, y: bounds.y, cursor: "nwse" },
+    { side: Side.Top, x: cx, y: bounds.y, cursor: "ns" },
+    { side: Side.Top + Side.Right, x: bounds.x + bounds.width, y: bounds.y, cursor: "nesw" },
+    { side: Side.Right, x: bounds.x + bounds.width, y: cy, cursor: "ew" },
+    { side: Side.Bottom + Side.Right, x: bounds.x + bounds.width, y: bounds.y + bounds.height, cursor: "nwse" },
+    { side: Side.Bottom, x: cx, y: bounds.y + bounds.height, cursor: "ns" },
+    { side: Side.Bottom + Side.Left, x: bounds.x, y: bounds.y + bounds.height, cursor: "nesw" },
+    { side: Side.Left, x: bounds.x, y: cy, cursor: "ew" },
+  ];
 
-    const rotateHandleX = cx;
-    const rotateHandleY = bounds.y - ROTATE_HANDLE_OFFSET;
-
-    return (
-      <g transform={`rotate(${rotation} ${cx} ${cy})`}>
-                {onRotateHandlePointerDown && (
-          <>
-            <line
-              x1={cx}
-              y1={bounds.y}
-              x2={rotateHandleX}
-              y2={rotateHandleY}
-              stroke="#20C5A8"
-              strokeWidth={1}
-              pointerEvents="none"
-            />
-            <circle
-              cx={rotateHandleX}
-              cy={rotateHandleY}
-              r={6}
-              fill="white"
-              stroke="#20C5A8"
-              strokeWidth={2}
-              style={{ cursor: "grab" }}
-              onPointerDown={(e) => {
-                e.stopPropagation();
-                onRotateHandlePointerDown(e, cx, cy);
-              }}
-            />
-          </>
-        )}
-
-        
-                <rect
+  return (
+    <g transform={transform}>
+      <rect
+        x={bounds.x}
+        y={bounds.y}
+        width={bounds.width}
+        height={bounds.height}
+        fill="none"
+        stroke="#20C5A8"
+        strokeWidth={1}
+        pointerEvents="none"
+      />
+      {onRotateHandlePointerDown && (
+        <>
+          <line x1={cx} y1={bounds.y} x2={cx} y2={bounds.y - ROTATE_HANDLE_OFFSET} stroke="#20C5A8" strokeWidth={1} pointerEvents="none" />
+          <circle
+            cx={cx}
+            cy={bounds.y - ROTATE_HANDLE_OFFSET}
+            r={6}
+            fill="white"
+            stroke="#20C5A8"
+            strokeWidth={2}
+            style={{ cursor: "grab" }}
+            onPointerDown={(e) => {
+              e.stopPropagation();
+              onRotateHandlePointerDown(e, bounds);
+            }}
+          />
+        </>
+      )}
+      {handles.map(({ side, x, y, cursor }) => (
+        <rect
+          key={side}
           className="fill-white stroke-1 stroke-[#20C5A8]"
-          style={{
-            cursor: rotatedResizeCursor("nwse", rotation),
-            width: `${HANDLE_WIDTH}px`,
-            height: `${HANDLE_WIDTH}px`,
-            transform: `translate(${bounds.x - HANDLE_WIDTH / 2}px, ${
-              bounds.y - HANDLE_WIDTH / 2
-            }px)`,
-          }}
-          x={0}
-          y={0}
+          x={x - HANDLE_WIDTH / 2}
+          y={y - HANDLE_WIDTH / 2}
+          width={HANDLE_WIDTH}
+          height={HANDLE_WIDTH}
+          style={{ cursor: rotatedResizeCursor(cursor, boxRotation) }}
           onPointerDown={(e) => {
             e.stopPropagation();
-            onResizeHandlePointerDown(Side.Top + Side.Left, bounds);
+            onResizeHandlePointerDown(side, bounds);
           }}
         />
-
-                <rect
-          className="fill-white stroke-1 stroke-[#20C5A8]"
-          style={{
-            cursor: rotatedResizeCursor("ns", rotation),
-            width: `${HANDLE_WIDTH}px`,
-            height: `${HANDLE_WIDTH}px`,
-            transform: `translate(${bounds.x + bounds.width / 2 - HANDLE_WIDTH / 2}px, ${
-              bounds.y - HANDLE_WIDTH / 2
-            }px)`,
-          }}
-          x={0}
-          y={0}
-          onPointerDown={(e) => {
-            e.stopPropagation();
-            onResizeHandlePointerDown(Side.Top, bounds);
-          }}
-        />
-
-                <rect
-          className="fill-white stroke-1 stroke-[#20C5A8]"
-          style={{
-            cursor: rotatedResizeCursor("nesw", rotation),
-            width: `${HANDLE_WIDTH}px`,
-            height: `${HANDLE_WIDTH}px`,
-            transform: `translate(${bounds.x + bounds.width - HANDLE_WIDTH / 2}px, ${
-              bounds.y - HANDLE_WIDTH / 2
-            }px)`,
-          }}
-          x={0}
-          y={0}
-          onPointerDown={(e) => {
-            e.stopPropagation();
-            onResizeHandlePointerDown(Side.Top + Side.Right, bounds);
-          }}
-        />
-
-                <rect
-          className="fill-white stroke-1 stroke-[#20C5A8]"
-          style={{
-            cursor: rotatedResizeCursor("ew", rotation),
-            width: `${HANDLE_WIDTH}px`,
-            height: `${HANDLE_WIDTH}px`,
-            transform: `translate(${bounds.x + bounds.width - HANDLE_WIDTH / 2}px, ${
-              bounds.y + bounds.height / 2 - HANDLE_WIDTH / 2
-            }px)`,
-          }}
-          x={0}
-          y={0}
-          onPointerDown={(e) => {
-            e.stopPropagation();
-            onResizeHandlePointerDown(Side.Right, bounds);
-          }}
-        />
-
-                <rect
-          className="fill-white stroke-1 stroke-[#20C5A8]"
-          style={{
-            cursor: rotatedResizeCursor("nwse", rotation),
-            width: `${HANDLE_WIDTH}px`,
-            height: `${HANDLE_WIDTH}px`,
-            transform: `translate(${bounds.x + bounds.width - HANDLE_WIDTH / 2}px, ${
-              bounds.y + bounds.height - HANDLE_WIDTH / 2
-            }px)`,
-          }}
-          x={0}
-          y={0}
-          onPointerDown={(e) => {
-            e.stopPropagation();
-            onResizeHandlePointerDown(Side.Bottom + Side.Right, bounds);
-          }}
-        />
-
-                <rect
-          className="fill-white stroke-1 stroke-[#20C5A8]"
-          style={{
-            cursor: rotatedResizeCursor("ns", rotation),
-            width: `${HANDLE_WIDTH}px`,
-            height: `${HANDLE_WIDTH}px`,
-            transform: `translate(${bounds.x + bounds.width / 2 - HANDLE_WIDTH / 2}px, ${
-              bounds.y + bounds.height - HANDLE_WIDTH / 2
-            }px)`,
-          }}
-          x={0}
-          y={0}
-          onPointerDown={(e) => {
-            e.stopPropagation();
-            onResizeHandlePointerDown(Side.Bottom, bounds);
-          }}
-        />
-
-                <rect
-          className="fill-white stroke-1 stroke-[#20C5A8]"
-          style={{
-            cursor: rotatedResizeCursor("nesw", rotation),
-            width: `${HANDLE_WIDTH}px`,
-            height: `${HANDLE_WIDTH}px`,
-            transform: `translate(${bounds.x - HANDLE_WIDTH / 2}px, ${
-              bounds.y + bounds.height - HANDLE_WIDTH / 2
-            }px)`,
-          }}
-          x={0}
-          y={0}
-          onPointerDown={(e) => {
-            e.stopPropagation();
-            onResizeHandlePointerDown(Side.Bottom + Side.Left, bounds);
-          }}
-        />
-
-                <rect
-          className="fill-white stroke-1 stroke-[#20C5A8]"
-          style={{
-            cursor: rotatedResizeCursor("ew", rotation),
-            width: `${HANDLE_WIDTH}px`,
-            height: `${HANDLE_WIDTH}px`,
-            transform: `translate(${bounds.x - HANDLE_WIDTH / 2}px, ${
-              bounds.y + bounds.height / 2 - HANDLE_WIDTH / 2
-            }px)`,
-          }}
-          x={0}
-          y={0}
-          onPointerDown={(e) => {
-            e.stopPropagation();
-            onResizeHandlePointerDown(Side.Left, bounds);
-          }}
-        />
-      </g>
-    );
-  }
-);
+      ))}
+    </g>
+  );
+});
 
 SelectionBox.displayName = "SelectionBox";

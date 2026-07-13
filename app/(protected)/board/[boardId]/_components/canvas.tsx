@@ -31,6 +31,102 @@ const MOVE_TOLERANCE = 6;
 
 const MAX_LAYERS = 100;
 
+type SelectionFrame = {
+    ids: string[];
+    bounds: XYWH;
+    rotation: number;
+    translation: Point;
+};
+
+const rotatePointAround = (px: number, py: number, cx: number, cy: number, angleDeg: number): Point => {
+    const radians = angleDeg * Math.PI / 180;
+    const cos = Math.cos(radians);
+    const sin = Math.sin(radians);
+    const dx = px - cx;
+    const dy = py - cy;
+    return { x: cx + dx * cos - dy * sin, y: cy + dx * sin + dy * cos };
+};
+
+const createSelectionFrame = (ids: readonly string[], bounds: XYWH, rotation = 0): SelectionFrame => {
+    const center = { x: bounds.x + bounds.width / 2, y: bounds.y + bounds.height / 2 };
+    const rotatedCenter = rotatePointAround(center.x, center.y, 0, 0, rotation);
+    return {
+        ids: [...ids],
+        bounds,
+        rotation,
+        // The transform is `rotate(rotation)` followed by this translation.
+        // At creation this is equivalent to rotating around the selection centre.
+        translation: { x: center.x - rotatedCenter.x, y: center.y - rotatedCenter.y },
+    };
+};
+
+const applySelectionFrame = (point: Point, frame: SelectionFrame): Point => {
+    const rotated = rotatePointAround(point.x, point.y, 0, 0, frame.rotation);
+    return { x: rotated.x + frame.translation.x, y: rotated.y + frame.translation.y };
+};
+
+const invertSelectionFrame = (point: Point, frame: SelectionFrame): Point =>
+    rotatePointAround(point.x - frame.translation.x, point.y - frame.translation.y, 0, 0, -frame.rotation);
+
+const selectionFrameCenter = (frame: SelectionFrame): Point =>
+    applySelectionFrame({ x: frame.bounds.x + frame.bounds.width / 2, y: frame.bounds.y + frame.bounds.height / 2 }, frame);
+
+const rotateSelectionFrame = (frame: SelectionFrame, delta: number): SelectionFrame => {
+    const center = selectionFrameCenter(frame);
+    const rotatedTranslation = rotatePointAround(frame.translation.x, frame.translation.y, 0, 0, delta);
+    const rotatedCenter = rotatePointAround(center.x, center.y, 0, 0, delta);
+    return {
+        ...frame,
+        rotation: frame.rotation + delta,
+        // Compose a rotation around the visible selection centre with the frame transform.
+        translation: { x: rotatedTranslation.x + center.x - rotatedCenter.x, y: rotatedTranslation.y + center.y - rotatedCenter.y },
+    };
+};
+
+const closestSide = (from: XYWH & { rotation?: number }, to: XYWH & { rotation?: number }): Side => {
+    const fromCenter = { x: from.x + from.width / 2, y: from.y + from.height / 2 };
+    const toCenter = { x: to.x + to.width / 2, y: to.y + to.height / 2 };
+    // Pick the nearest border in the source layer's local axes, not the canvas axes.
+    const localTarget = rotatePointAround(toCenter.x, toCenter.y, fromCenter.x, fromCenter.y, -(from.rotation ?? 0));
+    const dx = localTarget.x - fromCenter.x;
+    const dy = localTarget.y - fromCenter.y;
+    return Math.abs(dx) >= Math.abs(dy) ? (dx >= 0 ? Side.Right : Side.Left) : (dy >= 0 ? Side.Bottom : Side.Top);
+};
+const connectionPoint = (layer: XYWH & { rotation?: number }, side: Side) => {
+    const center = { x: layer.x + layer.width / 2, y: layer.y + layer.height / 2 };
+    const localPoint = side === Side.Left ? { x: layer.x, y: center.y }
+        : side === Side.Right ? { x: layer.x + layer.width, y: center.y }
+            : side === Side.Top ? { x: center.x, y: layer.y }
+                : { x: center.x, y: layer.y + layer.height };
+    return rotatePointAround(localPoint.x, localPoint.y, center.x, center.y, layer.rotation ?? 0);
+};
+
+/** Keep the stored arrow endpoints on the border of their bound layers. */
+const syncBoundArrows = (layers: any, ids: readonly string[]) => {
+    ids.forEach((id) => {
+        const arrow = layers.get(id);
+        if (!arrow || arrow.get("type") !== LayerType.Shape || arrow.get("shape") !== ShapeType.Arrow) return;
+        const start = layers.get(arrow.get("startLayerId"));
+        const end = layers.get(arrow.get("endLayerId"));
+        if (!start || !end) return;
+        const startBounds = { x: start.get("x"), y: start.get("y"), width: start.get("width"), height: start.get("height"), rotation: start.get("rotation") ?? 0 };
+        const endBounds = { x: end.get("x"), y: end.get("y"), width: end.get("width"), height: end.get("height"), rotation: end.get("rotation") ?? 0 };
+        // Default connectors follow the nearest facing borders as shapes move. A side is fixed
+        // only after the user chooses it from the connector controls.
+        const startSide = arrow.get("startSideLocked")
+            ? (arrow.get("startSide") ?? closestSide(startBounds, endBounds))
+            : closestSide(startBounds, endBounds);
+        const endSide = arrow.get("endSideLocked")
+            ? (arrow.get("endSide") ?? closestSide(endBounds, startBounds))
+            : closestSide(endBounds, startBounds);
+        const startPoint = connectionPoint(startBounds, startSide);
+        const endPoint = connectionPoint(endBounds, endSide);
+        // Bound arrows store world-space endpoints. Keeping the arrow itself unrotated avoids
+        // applying a second transform after its endpoints have been recalculated.
+        arrow.update({ startSide, endSide, x: startPoint.x, y: startPoint.y, width: endPoint.x - startPoint.x, height: endPoint.y - startPoint.y, rotation: 0 });
+    });
+};
+
 
 interface CanvasProps {
     boardId: string;
@@ -41,6 +137,9 @@ export const Canvas = ({ boardId }: CanvasProps) => {
     const pressStart = useRef<Point | null>(null);
     const activePointers = useRef<Map<number, Point>>(new Map());
     const lastPanCenter = useRef<Point | null>(null);
+    const resizeOrigins = useRef<Map<string, XYWH>>(new Map());
+    const rotateOrigins = useRef<Map<string, XYWH & { rotation: number }>>(new Map());
+    const activeSelectionFrame = useRef<SelectionFrame | null>(null);
 
 
     const layerIds = useStorage((root) => root.layerIds);
@@ -48,6 +147,12 @@ export const Canvas = ({ boardId }: CanvasProps) => {
     const [canvasState, setCanvasState] = useState<CanvasState>({
         mode: CanvasMode.None,
     });
+    const [selectionFrame, setSelectionFrameState] = useState<SelectionFrame | null>(null);
+    const selectionFrameRef = useRef<SelectionFrame | null>(null);
+    const setSelectionFrame = useCallback((frame: SelectionFrame | null) => {
+        selectionFrameRef.current = frame;
+        setSelectionFrameState(frame);
+    }, []);
     const [camera, setCamera] = useState<Camera>({
         x: 0,
         y: 0,
@@ -59,6 +164,7 @@ export const Canvas = ({ boardId }: CanvasProps) => {
         g: 232,
         b: 145,
     });
+    const [penSize, setPenSize] = useState(8);
     const BLACK: Color = { r: 0, g: 0, b: 0 };
     ;
 
@@ -78,11 +184,7 @@ export const Canvas = ({ boardId }: CanvasProps) => {
     }
 
 
-    type ClipboardItem = {
-        layer: Layer;
-    };
 
-    const [clipboard, setClipboard] = useState<ClipboardItem[] | null>(null);
 
     useDisableScrollBounce();
     const onWheel = useCallback((e: React.WheelEvent) => {
@@ -97,63 +199,71 @@ export const Canvas = ({ boardId }: CanvasProps) => {
     const canRedo = useCanRedo();
     const deleteLayers = useDeleteLayers();
     const selection = useSelf((me) => me.presence.selection);
+    const selectionKey = selection.join("|");
+
+    useEffect(() => {
+        const frame = selectionFrameRef.current;
+        if (frame && frame.ids.join("|") !== selectionKey) {
+            setSelectionFrame(null);
+        }
+    }, [selectionKey, setSelectionFrame]);
+
+    const visibleSelectionFrame = selectionFrame?.ids.join("|") === selectionKey ? selectionFrame : null;
 
     const selectedLayer = useStorage((root) => {
         const id = selection?.[0];
         return id ? root.layers.get(id) : null;
     });
 
-    const copySelectedLayers = useMutation(({ storage, self }) => {
-        const selection = self.presence.selection;
-        if (!selection || selection.length === 0) return;
 
-        const liveLayers = storage.get("layers");
-
-        const copied: ClipboardItem[] = [];
-
-        for (const id of selection) {
-            const layer = liveLayers.get(id);
-            if (!layer) continue;
-
-
-            copied.push({
-                layer: layer.toObject() as Layer,
-            });
-        }
-
-        setClipboard(copied);
+    const duplicateSelectedLayers = useMutation(({ storage, self, setMyPresence }) => {
+        const selected = self.presence.selection;
+        if (!selected?.length) return;
+        const layers = storage.get("layers");
+        const ids = storage.get("layerIds");
+        if (layers.size + selected.length > MAX_LAYERS) return;
+        const idMap = new Map(selected.map((id) => [id, nanoid()]));
+        const duplicates: string[] = [];
+        selected.forEach((selectedId) => {
+            const original = layers.get(selectedId);
+            if (!original) return;
+            const id = idMap.get(selectedId)!;
+            const clone = { ...(original.toObject() as Layer), x: original.get("x") + 20, y: original.get("y") + 20 } as ShapeLayer;
+            if (clone.type === LayerType.Shape && clone.shape === ShapeType.Arrow) {
+                const startId = clone.startLayerId && idMap.get(clone.startLayerId);
+                const endId = clone.endLayerId && idMap.get(clone.endLayerId);
+                // A copied connector only remains bound when both endpoints were copied too.
+                if (startId && endId) {
+                    clone.startLayerId = startId;
+                    clone.endLayerId = endId;
+                } else {
+                    delete clone.startLayerId;
+                    delete clone.endLayerId;
+                    delete clone.startSide;
+                    delete clone.endSide;
+                }
+            }
+            ids.push(id);
+            layers.set(id, new LiveObject(clone));
+            duplicates.push(id);
+        });
+        syncBoundArrows(layers, duplicates);
+        setMyPresence({ selection: duplicates }, { addToHistory: true });
     }, []);
 
-    const pasteLayers = useMutation(
-        ({ storage, setMyPresence }) => {
-            if (!clipboard || clipboard.length === 0) return;
-
-            const liveLayers = storage.get("layers");
-            const liveLayerIds = storage.get("layerIds");
-
-            if (liveLayers.size + clipboard.length > MAX_LAYERS) return;
-
-            const OFFSET = 20;
-            const newSelection: string[] = [];
-
-            for (const item of clipboard) {
-                const id = nanoid();
-
-                const clonedLayer: Layer = {
-                    ...item.layer,
-                    x: item.layer.x + OFFSET,
-                    y: item.layer.y + OFFSET,
-                };
-
-                liveLayerIds.push(id);
-                liveLayers.set(id, new LiveObject(clonedLayer));
-                newSelection.push(id);
-            }
-
-            setMyPresence({ selection: newSelection }, { addToHistory: true });
-        },
-        [clipboard]
-    );
+    const insertPastedImage = useMutation(({ storage, setMyPresence }, src: string) => {
+        const layers = storage.get("layers");
+        if (layers.size >= MAX_LAYERS) return;
+        const id = nanoid();
+        const width = 320;
+        const height = 220;
+        // Pasted content belongs where the user is looking, not at a fixed board coordinate.
+        const x = (window.innerWidth / 2 - camera.x) / camera.scale - width / 2;
+        const y = (window.innerHeight / 2 - camera.y) / camera.scale - height / 2;
+        layers.set(id, new LiveObject({ type: LayerType.Image, x, y, width, height, src }) as LiveObject<Layer>);
+        storage.get("layerIds").push(id);
+        setMyPresence({ selection: [id] }, { addToHistory: true });
+    }, [camera]);
 
 
     useEffect(() => {
@@ -163,8 +273,7 @@ export const Canvas = ({ boardId }: CanvasProps) => {
             if (isMod && e.key.toLowerCase() === "d") {
                 e.preventDefault();
 
-                copySelectedLayers();
-                pasteLayers();
+                duplicateSelectedLayers();
                 return;
             }
 
@@ -198,7 +307,21 @@ export const Canvas = ({ boardId }: CanvasProps) => {
 
         document.addEventListener("keydown", onKeyDown);
         return () => document.removeEventListener("keydown", onKeyDown);
-    }, [copySelectedLayers, pasteLayers, deleteLayers, history]);
+    }, [duplicateSelectedLayers, deleteLayers, history]);
+
+    useEffect(() => {
+        const onPaste = (event: ClipboardEvent) => {
+            const image = Array.from(event.clipboardData?.files ?? []).find((file) => file.type.startsWith("image/"))
+                ?? Array.from(event.clipboardData?.items ?? []).map((item) => item.type.startsWith("image/") ? item.getAsFile() : null).find(Boolean);
+            if (!image) return;
+            event.preventDefault();
+            const reader = new FileReader();
+            reader.onload = () => typeof reader.result === "string" && insertPastedImage(reader.result);
+            reader.readAsDataURL(image);
+        };
+        window.addEventListener("paste", onPaste);
+        return () => window.removeEventListener("paste", onPaste);
+    }, [insertPastedImage]);
 
     useEffect(() => {
         function onImageUploaded(e: Event) {
@@ -229,28 +352,26 @@ export const Canvas = ({ boardId }: CanvasProps) => {
             const liveLayerIds = storage.get("layerIds");
             const layerId = nanoid();
 
-            const layer = new LiveObject<{
-                type: LayerType.Ellipse | LayerType.Note | LayerType.Rectangle | LayerType.Text;
-                x: number;
-                y: number;
-                width: number;
-                height: number;
-                fill: Color;
-            }>({
+            const baseLayer = {
                 type: layerType,
                 x: position.x,
                 y: position.y,
                 width: 100,
                 height: 100,
-                fill: resolveColor(lastUsedColor),
-            });
+            };
+            const layerData = layerType === LayerType.Note
+                ? { ...baseLayer, fill: { r: 254, g: 202, b: 202 }, value: "", fontFamily: "kalam" as const, fontSize: 16, textAlign: "left" as const, verticalAlign: "top" as const, padding: 14 }
+                : layerType === LayerType.Text
+                    ? { ...baseLayer, fill: BLACK, value: "", textAlign: "center" as const, fontFamily: "mono" as const, fontWeight: "regular" as const }
+                    : { ...baseLayer, fill: undefined, stroke: BLACK, strokeWidth: 2 };
+            const layer = new LiveObject(layerData);
 
             liveLayerIds.push(layerId);
             liveLayers.set(layerId, layer as LiveObject<Layer>);
             setMyPresence({ selection: [layerId] }, { addToHistory: true });
             setCanvasState({ mode: CanvasMode.None });
         },
-        [lastUsedColor]
+        []
     );
 
 
@@ -298,8 +419,8 @@ export const Canvas = ({ boardId }: CanvasProps) => {
                 y: position.y,
                 width: 120,
                 height: 80,
-                fill: resolveColor(lastUsedColor),
-                stroke: undefined,
+                fill: undefined,
+                stroke: BLACK,
                 strokeWidth: 2,
                 rotation: 0,
             });
@@ -310,7 +431,7 @@ export const Canvas = ({ boardId }: CanvasProps) => {
             setMyPresence({ selection: [id] }, { addToHistory: true });
             setCanvasState({ mode: CanvasMode.None });
         },
-        [lastUsedColor]
+        []
     );
 
 
@@ -333,11 +454,19 @@ export const Canvas = ({ boardId }: CanvasProps) => {
                 })
             }
         }
+        const frame = selectionFrameRef.current;
+        if (frame && frame.ids.join("|") === self.presence.selection.join("|")) {
+            setSelectionFrame({
+                ...frame,
+                translation: { x: frame.translation.x + offset.x, y: frame.translation.y + offset.y },
+            });
+        }
+        syncBoundArrows(liveLayers, storage.get("layerIds").toImmutable());
         setCanvasState({
             mode: CanvasMode.Translating,
             current: point,
         })
-    }, [canvasState])
+    }, [canvasState, setSelectionFrame])
 
 
     const unselectLayers = useMutation(({ self, setMyPresence }) => {
@@ -404,13 +533,14 @@ export const Canvas = ({ boardId }: CanvasProps) => {
             new LiveObject(penPointsToPathLayer(
                 pencilDraft,
                 resolveColor(lastUsedColor),
+                penSize,
             ))
         );
         const liveLayerIds = storage.get('layerIds');
         liveLayerIds.push(id);
         setMyPresence({ pencilDraft: null });
         setCanvasState({ mode: CanvasMode.Pencil });
-    }, [lastUsedColor])
+    }, [lastUsedColor, penSize])
 
     const startDrawing = useMutation(({ setMyPresence }, point: Point, pressure: number) => {
         setMyPresence({
@@ -419,114 +549,137 @@ export const Canvas = ({ boardId }: CanvasProps) => {
         })
     }, [lastUsedColor])
 
-    function rotatePointAround(
-        px: number,
-        py: number,
-        cx: number,
-        cy: number,
-        angleDeg: number
-    ) {
-        const rad = (angleDeg * Math.PI) / 180;
-        const cos = Math.cos(rad);
-        const sin = Math.sin(rad);
-
-        const dx = px - cx;
-        const dy = py - cy;
-
-        return {
-            x: cx + dx * cos - dy * sin,
-            y: cy + dx * sin + dy * cos,
-        };
-    }
-
-
     const resizeSelectedLayer = useMutation(
-        ({ storage, self }, point: Point) => {
+        ({ storage }, point: Point) => {
             if (canvasState.mode !== CanvasMode.Resizing) return;
 
             const liveLayers = storage.get("layers");
-            const id = self.presence.selection[0];
-            const layer = liveLayers.get(id);
-            if (!layer) return;
-
-            const rotation = Number((layer as any).get("rotation") ?? 0);
-
-            const { x, y, width, height } = canvasState.intialBounds;
-
-            const cx = x + width / 2;
-            const cy = y + height / 2;
-
-            const localPoint = rotatePointAround(
-                point.x,
-                point.y,
-                cx,
-                cy,
-                -rotation
-            );
-
+            const frame = activeSelectionFrame.current;
+            if (!frame) return;
+            const { x, y, width, height } = frame.bounds;
+            const localPoint = invertSelectionFrame(point, frame);
             const bounds = resizeBounds(
-                canvasState.intialBounds,
+                frame.bounds,
                 canvasState.corner,
                 localPoint
             );
+            const scaleX = width ? bounds.width / width : 1;
+            const scaleY = height ? bounds.height / height : 1;
 
-            layer.update(bounds);
+            resizeOrigins.current.forEach((original, id) => {
+                const layer = liveLayers.get(id);
+                if (!layer) return;
+                const originalCenter = { x: original.x + original.width / 2, y: original.y + original.height / 2 };
+                const localCenter = invertSelectionFrame(originalCenter, frame);
+                const nextLocalCenter = {
+                    x: bounds.x + (localCenter.x - x) * scaleX,
+                    y: bounds.y + (localCenter.y - y) * scaleY,
+                };
+                const nextCenter = applySelectionFrame(nextLocalCenter, frame);
+                const nextWidth = Math.max(10, original.width * scaleX);
+                const nextHeight = Math.max(10, original.height * scaleY);
+                layer.update({
+                    x: nextCenter.x - nextWidth / 2,
+                    y: nextCenter.y - nextHeight / 2,
+                    width: nextWidth,
+                    height: nextHeight,
+                });
+            });
+            setSelectionFrame({ ...frame, bounds });
+            syncBoundArrows(liveLayers, storage.get("layerIds").toImmutable());
         },
-        [canvasState]
+        [canvasState, setSelectionFrame]
     );
 
 
 
     const rotateSelectedLayer = useMutation(
-        ({ storage, self }, rotation: number) => {
-            const id = self.presence.selection[0];
-            if (!id) return;
-
-            const layer = storage.get("layers").get(id);
-            if (!layer) return;
-
-            layer.update({ rotation });
+        ({ storage }, delta: number) => {
+            const layers = storage.get("layers");
+            if (canvasState.mode !== CanvasMode.Rotating) return;
+            const frame = activeSelectionFrame.current;
+            if (!frame) return;
+            rotateOrigins.current.forEach((original, id) => {
+                const layer = layers.get(id);
+                if (!layer) return;
+                const originalCenter = { x: original.x + original.width / 2, y: original.y + original.height / 2 };
+                const nextCenter = rotatePointAround(originalCenter.x, originalCenter.y, canvasState.center.x, canvasState.center.y, delta);
+                layer.update({
+                    x: nextCenter.x - original.width / 2,
+                    y: nextCenter.y - original.height / 2,
+                    rotation: original.rotation + delta,
+                });
+            });
+            setSelectionFrame(rotateSelectionFrame(frame, delta));
+            syncBoundArrows(layers, storage.get("layerIds").toImmutable());
         },
-        []
+        [canvasState, setSelectionFrame]
     );
 
 
 
-    const onRotateHandlePointerDown = useCallback(
-        (e: React.PointerEvent, cx: number, cy: number) => {
+    const onRotateHandlePointerDown = useMutation(
+        ({ storage, self }, e: React.PointerEvent, bounds: XYWH) => {
             e.stopPropagation();
             history.pause();
-
             const point = pointerEventToCanvasPoint(e, camera);
-
-            const initialRotation =
-                selectedLayer && "rotation" in selectedLayer
-                    ? selectedLayer.rotation ?? 0
-                    : 0;
-
+            const existingFrame = selectionFrameRef.current;
+            const ids = self.presence.selection;
+            const selectedRotation = ids.length === 1
+                ? ((storage.get("layers").get(ids[0]) as any)?.get("rotation") ?? 0)
+                : 0;
+            const frame = existingFrame && existingFrame.ids.join("|") === ids.join("|")
+                ? existingFrame
+                : createSelectionFrame(ids, bounds, selectedRotation);
+            activeSelectionFrame.current = frame;
+            setSelectionFrame(frame);
+            const center = selectionFrameCenter(frame);
             const startAngle =
-                Math.atan2(point.y - cy, point.x - cx) * (180 / Math.PI);
+                Math.atan2(point.y - center.y, point.x - center.x) * (180 / Math.PI);
+
+            const origins = new Map<string, XYWH & { rotation: number }>();
+            self.presence.selection.forEach((id) => {
+                const layer = storage.get("layers").get(id) as any;
+                if (layer) origins.set(id, { x: layer.get("x"), y: layer.get("y"), width: layer.get("width"), height: layer.get("height"), rotation: layer.get("rotation") ?? 0 });
+            });
+            rotateOrigins.current = origins;
 
             setCanvasState({
                 mode: CanvasMode.Rotating,
-                center: { x: cx, y: cy },
+                center,
                 startAngle,
-                initialRotation,
+                initialRotation: 0,
             });
         },
-        [camera, history, selectedLayer]
+        [camera, history, setSelectionFrame]
     );
 
 
 
-    const onResizeHandlePointerDown = useCallback((corner: Side, intialBounds: XYWH) => {
+    const onResizeHandlePointerDown = useMutation(({ storage, self }, corner: Side, intialBounds: XYWH) => {
         history.pause();
+        const existingFrame = selectionFrameRef.current;
+        const ids = self.presence.selection;
+        const selectedRotation = ids.length === 1
+            ? ((storage.get("layers").get(ids[0]) as any)?.get("rotation") ?? 0)
+            : 0;
+        const frame = existingFrame && existingFrame.ids.join("|") === ids.join("|")
+            ? existingFrame
+            : createSelectionFrame(ids, intialBounds, selectedRotation);
+        activeSelectionFrame.current = frame;
+        setSelectionFrame(frame);
+        const nextOrigins = new Map<string, XYWH>();
+        self.presence.selection.forEach((id) => {
+            const layer = storage.get("layers").get(id);
+            if (layer) nextOrigins.set(id, { x: layer.get("x"), y: layer.get("y"), width: layer.get("width"), height: layer.get("height") });
+        });
+        resizeOrigins.current = nextOrigins;
         setCanvasState({
             mode: CanvasMode.Resizing,
             corner,
-            intialBounds,
+            intialBounds: frame.bounds,
         });
-    }, [history])
+    }, [history, setSelectionFrame])
 
     const onPointerMove = useMutation(({ setMyPresence }, e: React.PointerEvent) => {
         if (activePointers.current.has(e.pointerId)) {
@@ -605,7 +758,7 @@ export const Canvas = ({ boardId }: CanvasProps) => {
             resizeSelectedLayer(current);
         }
         else if (canvasState.mode === CanvasMode.Rotating) {
-            const { center, startAngle, initialRotation } = canvasState;
+            const { center, startAngle } = canvasState;
 
             const angle =
                 Math.atan2(current.y - center.y, current.x - center.x) *
@@ -613,7 +766,7 @@ export const Canvas = ({ boardId }: CanvasProps) => {
 
             const delta = angle - startAngle;
 
-            rotateSelectedLayer(initialRotation + delta);
+            rotateSelectedLayer(delta);
         }
 
         setMyPresence({ cursor: current });
@@ -723,6 +876,9 @@ export const Canvas = ({ boardId }: CanvasProps) => {
         else if (canvasState.mode === CanvasMode.Pencil) {
             insertPath();
         }
+        else if (canvasState.mode === CanvasMode.Connecting) {
+            // Connector mode stays active until the user presses Escape or picks another tool.
+        }
         else if (canvasState.mode === CanvasMode.Inserting) {
             if (
                 canvasState.layertype === LayerType.Text ||
@@ -780,7 +936,7 @@ export const Canvas = ({ boardId }: CanvasProps) => {
 
 
     const onLayerPointerDown = useMutation(
-        ({ self, setMyPresence }, e: React.PointerEvent, layerId: string) => {
+        ({ storage, self, setMyPresence }, e: React.PointerEvent, layerId: string) => {
             if (canvasState.mode === CanvasMode.Pencil || canvasState.mode === CanvasMode.Inserting) {
                 return;
             }
@@ -796,6 +952,37 @@ export const Canvas = ({ boardId }: CanvasProps) => {
             }
             if (!point) return;
 
+            if (canvasState.mode === CanvasMode.Connecting) {
+                const target = storage.get("layers").get(layerId) as any;
+                const connectable = target && [LayerType.Shape, LayerType.Rectangle, LayerType.Ellipse].includes(target.get("type"));
+                if (!connectable) return;
+                if (!canvasState.sourceId) {
+                    setCanvasState({ mode: CanvasMode.Connecting, sourceId: layerId });
+                    setMyPresence({ selection: [layerId] });
+                    return;
+                }
+                if (canvasState.sourceId === layerId) return;
+                const source = storage.get("layers").get(canvasState.sourceId) as any;
+                if (!source) return;
+                const sourceBounds = { x: source.get("x"), y: source.get("y"), width: source.get("width"), height: source.get("height"), rotation: source.get("rotation") ?? 0 };
+                const targetBounds = { x: target.get("x"), y: target.get("y"), width: target.get("width"), height: target.get("height"), rotation: target.get("rotation") ?? 0 };
+                const startSide = closestSide(sourceBounds, targetBounds);
+                const endSide = closestSide(targetBounds, sourceBounds);
+                const startPoint = connectionPoint(sourceBounds, startSide);
+                const endPoint = connectionPoint(targetBounds, endSide);
+                const id = nanoid();
+                storage.get("layerIds").push(id);
+                storage.get("layers").set(id, new LiveObject<ShapeLayer>({
+                    type: LayerType.Shape, shape: ShapeType.Arrow, x: startPoint.x, y: startPoint.y,
+                    width: endPoint.x - startPoint.x, height: endPoint.y - startPoint.y, fill: undefined, stroke: BLACK,
+                    strokeWidth: 2, startLayerId: canvasState.sourceId, endLayerId: layerId, startSide, endSide,
+                    startSideLocked: false, endSideLocked: false,
+                }));
+                setMyPresence({ selection: [id] }, { addToHistory: true });
+                setCanvasState({ mode: CanvasMode.Connecting });
+                return;
+            }
+
             if (!self.presence?.selection?.includes(layerId)) {
                 setMyPresence({ selection: [layerId] }, { addToHistory: true });
             }
@@ -809,7 +996,7 @@ export const Canvas = ({ boardId }: CanvasProps) => {
             setCanvasState,
             camera,
             history,
-            canvasState.mode,
+            canvasState,
         ]
     );
 
@@ -885,6 +1072,8 @@ export const Canvas = ({ boardId }: CanvasProps) => {
                 zoomIn={zoomIn}
                 zoomOut={zoomOut}
                 resetZoom={resetZoom}
+                penSize={penSize}
+                setPenSize={setPenSize}
             />
 
             <SelectionTools
@@ -980,8 +1169,9 @@ export const Canvas = ({ boardId }: CanvasProps) => {
                         <SelectionBox
                             onResizeHandlePointerDown={onResizeHandlePointerDown}
                             onRotateHandlePointerDown={onRotateHandlePointerDown}
+                            frame={visibleSelectionFrame}
                             rotation={
-                                selectedLayer && "rotation" in selectedLayer
+                                selection.length === 1 && selectedLayer && "rotation" in selectedLayer
                                     ? selectedLayer.rotation ?? 0
                                     : 0
                             }
@@ -1005,6 +1195,7 @@ export const Canvas = ({ boardId }: CanvasProps) => {
                                 points={pencilDraft}
                                 x={0}
                                 y={0}
+                                size={penSize}
                             />
                         )
                         }

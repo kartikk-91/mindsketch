@@ -18,6 +18,7 @@ export const CanvasImage = memo(
             width,
             height,
             rotation = 0,
+            opacity = 1,
         } = layer;
 
         const cx = x + width / 2;
@@ -26,6 +27,7 @@ export const CanvasImage = memo(
         return (
             <g
                 transform={`rotate(${rotation} ${cx} ${cy}) translate(${x}, ${y})`}
+                opacity={opacity}
                 onPointerDown={(e) => onPointerDown(e, id)}
             >
                 <image

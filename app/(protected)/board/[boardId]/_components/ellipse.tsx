@@ -14,29 +14,28 @@ export const Ellipse = ({
     onPointerDown,
     selectionColor,
 }: EllipseProps) => {
-    const { x, y, width, height, fill, stroke, strokeWidth } = layer;
+    const { x, y, width, height, fill, stroke, strokeWidth, rotation = 0, opacity = 1 } = layer;
+    const hasFill = Boolean(fill && fill.r !== -1);
+    const resolvedStroke = stroke ? ColorToCSS(stroke) : hasFill ? "transparent" : "#000";
 
     return (
         <ellipse
             className="drop-shadow-md"
             data-export-stroke={stroke ? ColorToCSS(stroke) : "transparent"}
             data-export-selected={selectionColor ? "true" : undefined}
-            style={{
-                transform: `translate(${x}px, ${y}px)`,
-            }}
-            cx={width / 2}
-            cy={height / 2}
+            transform={`rotate(${rotation} ${x + width / 2} ${y + height / 2})`}
+            cx={x + width / 2}
+            cy={y + height / 2}
             rx={width / 2}
             ry={height / 2}
-            fill={fill ? ColorToCSS(fill) : "none"}
+            fill={hasFill ? ColorToCSS(fill!) : "none"}
             stroke={
                 selectionColor
                     ? selectionColor
-                    : stroke
-                    ? ColorToCSS(stroke)
-                    : "transparent"
+                    : resolvedStroke
             }
-            strokeWidth={strokeWidth ?? 2}
+            strokeWidth={stroke ? (strokeWidth || 2) : hasFill ? 0 : 2}
+            opacity={opacity}
             onPointerDown={(e) => onPointerDown(e, id)}
         />
     );

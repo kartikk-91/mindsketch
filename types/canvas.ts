@@ -48,6 +48,15 @@ export type ShapeLayer = {
     stroke?: Color;
     strokeWidth?: number;
     dashed?: boolean;
+    opacity?: number;
+    /** Present only on arrows created with the connector tool. */
+    startLayerId?: string;
+    endLayerId?: string;
+    startSide?: Side;
+    endSide?: Side;
+    /** Set only when the user explicitly chooses a connector port. */
+    startSideLocked?: boolean;
+    endSideLocked?: boolean;
 
     rotation?: number;
     value?: string;
@@ -61,7 +70,8 @@ export type RectangleLayer = {
     y: number;
     width: number;
     height: number;
-    fill?: Color; stroke?: Color; strokeWidth?: number; value?: string;
+    fill?: Color; stroke?: Color; strokeWidth?: number; value?: string; opacity?: number;
+    rotation?: number;
 };
 
 export type EllipseLayer = {
@@ -71,7 +81,8 @@ export type EllipseLayer = {
     width: number;
     height: number;
     fill?: Color;
-    stroke?: Color; strokeWidth?: number; value?: string;
+    stroke?: Color; strokeWidth?: number; value?: string; opacity?: number;
+    rotation?: number;
 };
 
 
@@ -87,6 +98,7 @@ export type TextLayer = {
     textAlign: "left" | "center" | "right";
     fontFamily?: NoteFontFamily;
     fontWeight?: "regular" | "bold";
+    opacity?: number;
 };
 
 export type NoteFontFamily =
@@ -114,6 +126,7 @@ export type NoteLayer = {
   textAlign: "left" | "center" | "right";
   verticalAlign: "top" | "center";
   padding: number;
+  opacity?: number;
 };
 
 
@@ -127,6 +140,8 @@ export type PathLayer = {
     points: number[][];
     value?: string;
     rotation?: number;
+    opacity?: number;
+    strokeWidth?: number;
 };
 
 
@@ -139,6 +154,7 @@ export type ImageLayer = {
     src: string;
     value?: string;
     rotation?: number;
+    opacity?: number;
 };
 
 export type Point = {
@@ -213,6 +229,10 @@ export type CanvasState =
 
     | {
         mode: CanvasMode.Pencil;
+    }
+    | {
+        mode: CanvasMode.Connecting;
+        sourceId?: string;
     };
 
 export enum CanvasMode {
@@ -224,6 +244,7 @@ export enum CanvasMode {
     Resizing,
     Pencil,
     Rotating,
+    Connecting,
 }
 
 

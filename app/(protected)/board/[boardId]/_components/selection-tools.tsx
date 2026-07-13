@@ -3,7 +3,7 @@
 "use client";
 
 import { useSelectionBounds } from "@/hooks/use-selection-bounds";
-import { Camera, Color, LayerType, NoteFontFamily, ShapeType } from "@/types/canvas";
+import { Camera, Color, LayerType, NoteFontFamily, ShapeType, Side } from "@/types/canvas";
 import { useSelf, useMutation, useStorage } from "@liveblocks/react";
 import { memo } from "react";
 import { ColorPicker } from "./color-picker";
@@ -46,6 +46,8 @@ const SIZE_PRESETS = [
   { value: 40, label: "XL" },
 ];
 
+const DEFAULT_STROKE: Color = { r: 0, g: 0, b: 0 };
+
 interface SelectionToolsProps {
   camera: Camera;
   setLastUsedColor: (color: Color) => void;
@@ -70,6 +72,7 @@ export const SelectionTools = memo(
     const isLine = shapeKind === ShapeType.Line;
     const isArrow = shapeKind === ShapeType.Arrow;
     const isLineOrArrow = isLine || isArrow;
+    const isBoundArrow = isArrow && Boolean((selectedLayer as any)?.startLayerId && (selectedLayer as any)?.endLayerId);
 
     const isPath = selectedLayer?.type === LayerType.Path;
     const isText = selectedLayer?.type === LayerType.Text;
@@ -82,7 +85,7 @@ export const SelectionTools = memo(
       : null;
 
     const currentFontFamily: NoteFontFamily =
-      isText ? (selectedLayer as any).fontFamily ?? "kalam"
+      isText ? (selectedLayer as any).fontFamily ?? "mono"
       : isNote ? selectedLayer.fontFamily ?? "kalam"
       : "kalam";
 
@@ -116,6 +119,32 @@ export const SelectionTools = memo(
         ? selectedLayer.stroke
         : null;
 
+    const currentOpacity = Math.round(((selectedLayer as any)?.opacity ?? 1) * 100);
+
+    const setOpacity = useMutation(
+      ({ storage }, value: number) => {
+        const layers = storage.get("layers");
+        selection?.forEach((id) => layers.get(id)?.set("opacity", value / 100));
+      },
+      [selection]
+    );
+
+    const setConnectionSide = useMutation(({ storage }, key: "startSide" | "endSide", side: Side) => {
+      const id = selection?.[0];
+      if (!id) return;
+      const arrow = storage.get("layers").get(id) as any;
+      if (!arrow) return;
+      arrow.set(key, side);
+      arrow.set(key === "startSide" ? "startSideLocked" : "endSideLocked", true);
+      const start = storage.get("layers").get(arrow.get("startLayerId")) as any;
+      const end = storage.get("layers").get(arrow.get("endLayerId")) as any;
+      if (!start || !end) return;
+      const point = (layer: any, edge: Side) => edge === Side.Left ? { x: layer.get("x"), y: layer.get("y") + layer.get("height") / 2 } : edge === Side.Right ? { x: layer.get("x") + layer.get("width"), y: layer.get("y") + layer.get("height") / 2 } : edge === Side.Top ? { x: layer.get("x") + layer.get("width") / 2, y: layer.get("y") } : { x: layer.get("x") + layer.get("width") / 2, y: layer.get("y") + layer.get("height") };
+      const startPoint = point(start, key === "startSide" ? side : arrow.get("startSide"));
+      const endPoint = point(end, key === "endSide" ? side : arrow.get("endSide"));
+      arrow.update({ x: startPoint.x, y: startPoint.y, width: endPoint.x - startPoint.x, height: endPoint.y - startPoint.y });
+    }, [selection]);
+
     const setFillColor = useMutation(
       ({ storage }, color: Color | null) => {
         if (!canFill) return;
@@ -126,10 +155,21 @@ export const SelectionTools = memo(
         selection?.forEach((id) => {
           const layer = liveLayers.get(id);
           if (!layer) return;
+          const liveLayer = layer as any;
 
-          layer.update({
-            fill: color ?? undefined,
-          });
+          if (color) {
+            liveLayer.set("fill", color);
+            return;
+          }
+
+          // "No fill" means transparent interior, never an invisible shape.
+          liveLayer.delete("fill");
+          const type = liveLayer.get("type");
+          const shape = liveLayer.get("shape");
+          const supportsBorder = type === LayerType.Rectangle || type === LayerType.Ellipse || (type === LayerType.Shape && shape !== ShapeType.Line && shape !== ShapeType.Arrow);
+          if (supportsBorder && !liveLayer.get("stroke")) {
+            liveLayer.update({ stroke: DEFAULT_STROKE, strokeWidth: 2 });
+          }
         });
       },
       [selection, canFill, setLastUsedColor]
@@ -144,16 +184,22 @@ export const SelectionTools = memo(
         selection?.forEach((id) => {
           const layer = liveLayers.get(id);
           if (!layer) return;
+          const liveLayer = layer as any;
 
           if (color) {
-            layer.update({
+            liveLayer.update({
               stroke: color,
               strokeWidth: 2,
             });
+          } else if (liveLayer.get("fill") && liveLayer.get("fill").r !== -1) {
+            // A filled shape may intentionally have no border.
+            liveLayer.delete("stroke");
+            liveLayer.set("strokeWidth", 0);
           } else {
-            layer.update({
-              stroke: undefined,
-              strokeWidth: 0,
+            // An unfilled shape must remain visible; its default is a black outline.
+            liveLayer.update({
+              stroke: DEFAULT_STROKE,
+              strokeWidth: 2,
             });
           }
         });
@@ -251,7 +297,34 @@ export const SelectionTools = memo(
     if (!selectionBounds || !selectedLayer) return null;
 
     return (
-      <div className="absolute top-[60px] ml-2 p-3 rounded-xl bg-white shadow-sm border flex items-center select-none gap-4">
+      <div className="absolute bottom-0 left-1/2 z-30 flex -translate-x-1/2 items-center gap-4 rounded-t-2xl border border-b-0 border-neutral-200/80 bg-white/95 p-3 shadow-[0_-10px_30px_rgba(15,23,42,0.12)] backdrop-blur select-none">
+        <div className="flex min-w-24 flex-col gap-1 pr-2 mr-2 border-r border-neutral-200">
+          <div className="flex items-center justify-between text-xs text-neutral-500"><span>Opacity</span><span>{currentOpacity}%</span></div>
+          <input
+            aria-label="Element opacity"
+            type="range"
+            min="10"
+            max="100"
+            value={currentOpacity}
+            onChange={(event) => setOpacity(Number(event.target.value))}
+            className="h-1.5 w-24 cursor-pointer accent-neutral-900"
+          />
+        </div>
+
+        {isBoundArrow && (
+          <div className="flex gap-2 border-r border-neutral-200 pr-3">
+            <label className="flex flex-col gap-1 text-[11px] text-neutral-500">Start
+              <select value={(selectedLayer as any).startSide ?? Side.Right} onChange={(e) => setConnectionSide("startSide", Number(e.target.value) as Side)} className="rounded-md border border-neutral-200 bg-white px-1.5 py-1 text-xs text-neutral-700">
+                <option value={Side.Top}>Top</option><option value={Side.Right}>Right</option><option value={Side.Bottom}>Bottom</option><option value={Side.Left}>Left</option>
+              </select>
+            </label>
+            <label className="flex flex-col gap-1 text-[11px] text-neutral-500">End
+              <select value={(selectedLayer as any).endSide ?? Side.Left} onChange={(e) => setConnectionSide("endSide", Number(e.target.value) as Side)} className="rounded-md border border-neutral-200 bg-white px-1.5 py-1 text-xs text-neutral-700">
+                <option value={Side.Top}>Top</option><option value={Side.Right}>Right</option><option value={Side.Bottom}>Bottom</option><option value={Side.Left}>Left</option>
+              </select>
+            </label>
+          </div>
+        )}
         {canFill && !isLineOrArrow && (
           <div className="flex flex-col gap-1 pr-2 mr-2 border-r border-neutral-200">
             <span className="text-xs text-neutral-500">Color</span>
@@ -304,7 +377,7 @@ export const SelectionTools = memo(
             
             <div className="flex items-center gap-2">
               
-              {isNote ? (
+              {hasText ? (
                 <div className="flex flex-col gap-1">
                   <span className="text-xs text-neutral-500">Font</span>
                   <div className="relative">
@@ -322,14 +395,7 @@ export const SelectionTools = memo(
                     <ChevronDown className="absolute right-1.5 top-1/2 -translate-y-1/2 h-3 w-3 text-neutral-400 pointer-events-none" />
                   </div>
                 </div>
-              ) : (
-                <div className="flex flex-col gap-1">
-                  <span className="text-xs text-neutral-500">Font</span>
-                  <div className="px-2 py-1 text-xs font-medium text-neutral-700 bg-neutral-50 border border-neutral-300 rounded-md">
-                    Mono
-                  </div>
-                </div>
-              )}
+              ) : null}
 
               <div className="flex flex-col gap-1">
                 <span className="text-xs text-neutral-500">Bold</span>

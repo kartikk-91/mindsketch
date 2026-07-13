@@ -14,7 +14,9 @@ export const Rectangle = ({
     onPointerDown,
     selectionColor,
 }: RectangleProps) => {
-    const { x, y, width, height, fill, stroke, strokeWidth } = layer;
+    const { x, y, width, height, fill, stroke, strokeWidth, rotation = 0, opacity = 1 } = layer;
+    const hasFill = Boolean(fill && fill.r !== -1);
+    const resolvedStroke = stroke ? ColorToCSS(stroke) : hasFill ? "transparent" : "#000";
 
     return (
         <rect
@@ -22,22 +24,21 @@ export const Rectangle = ({
             data-export-stroke={stroke ? ColorToCSS(stroke) : "transparent"}
             data-export-selected={selectionColor ? "true" : undefined}
             onPointerDown={(e) => onPointerDown(e, id)}
-            style={{
-                transform: `translate(${x}px,${y}px)`,
-            }}
-            x={0}
-            y={0}
+            transform={`rotate(${rotation} ${x + width / 2} ${y + height / 2})`}
+            x={x}
+            y={y}
             width={width}
             height={height}
-            fill={fill ? ColorToCSS(fill) : "none"}
+            rx={12}
+            ry={12}
+            fill={hasFill ? ColorToCSS(fill!) : "none"}
             stroke={
                 selectionColor
                     ? selectionColor
-                    : stroke
-                    ? ColorToCSS(stroke)
-                    : "transparent"
+                    : resolvedStroke
             }
-            strokeWidth={strokeWidth ?? 2}
+            strokeWidth={stroke ? (strokeWidth || 2) : hasFill ? 0 : 2}
+            opacity={opacity}
         />
     );
 };

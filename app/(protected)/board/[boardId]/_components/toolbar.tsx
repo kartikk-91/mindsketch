@@ -25,6 +25,7 @@ import {
   ZoomIn,
   ZoomOut,
   RefreshCcw,
+  GitFork,
 } from "lucide-react";
 
 import {
@@ -48,6 +49,8 @@ interface ToolbarProps {
   zoomIn: () => void;
   zoomOut: () => void;
   resetZoom: () => void;
+  penSize: number;
+  setPenSize: (size: number) => void;
 }
 
 
@@ -61,6 +64,8 @@ export const Toolbar = ({
   zoomIn,
   zoomOut,
   resetZoom,
+  penSize,
+  setPenSize,
 }: ToolbarProps) => {
 
   const shapePopoverRef = useRef<HTMLDivElement>(null);
@@ -110,8 +115,8 @@ export const Toolbar = ({
 
   return (
     <>
-      <div className="absolute top-[50%] -translate-y-[50%] left-2 flex flex-col gap-y-4 pt-8">
-        <div className="bg-white rounded-md p-1.5 flex gap-y-1 flex-col items-center shadow-md relative">
+      <div className="absolute top-1/2 left-4 z-20 -translate-y-1/2 flex flex-col gap-3">
+        <div className="relative flex flex-col items-center gap-1 rounded-2xl border border-neutral-200/80 bg-white/95 p-1.5 shadow-[0_12px_32px_rgba(15,23,42,0.12)] backdrop-blur">
           <ToolButton
             label="Select"
             icon={MousePointer2}
@@ -205,14 +210,46 @@ export const Toolbar = ({
             onClick={() => setCanvasState({ mode: CanvasMode.Pencil })}
             isActive={canvasState.mode === CanvasMode.Pencil}
           />
+          <ToolButton
+            label="Connect shapes"
+            icon={GitFork}
+            onClick={() => setCanvasState({ mode: CanvasMode.Connecting })}
+            isActive={canvasState.mode === CanvasMode.Connecting}
+          />
         </div>
 
-        <div className="bg-white rounded-md p-1.5 flex flex-col items-center shadow-md">
+        <div className="flex flex-col items-center rounded-2xl border border-neutral-200/80 bg-white/95 p-1.5 shadow-[0_12px_32px_rgba(15,23,42,0.1)] backdrop-blur">
           <ToolButton label="Undo" icon={Undo2} onClick={undo} isDisabled={!canUndo} />
           <ToolButton label="Redo" icon={Redo2} onClick={redo} isDisabled={!canRedo} />
         </div>
       </div>
-      <div className="bg-white rounded-md absolute right-2 bottom-16 p-1.5 flex flex-col items-center shadow-md">
+      {canvasState.mode === CanvasMode.Pencil && (
+        <div className="absolute bottom-0 left-1/2 z-30 flex -translate-x-1/2 items-center gap-3 rounded-t-2xl border border-b-0 border-neutral-200/80 bg-white/95 px-4 py-3 shadow-[0_-10px_30px_rgba(15,23,42,0.14)] backdrop-blur">
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-neutral-900 text-white">
+            <Pencil className="h-4 w-4" />
+          </div>
+          <div className="min-w-32">
+            <div className="mb-1 flex items-center justify-between text-[11px] font-medium text-neutral-500">
+              <span>Stroke</span><span>{penSize}px</span>
+            </div>
+            <input
+              aria-label="Pen thickness"
+              type="range"
+              min="2"
+              max="24"
+              value={penSize}
+              onChange={(event) => setPenSize(Number(event.target.value))}
+              className="h-1.5 w-36 cursor-pointer accent-neutral-900"
+            />
+          </div>
+        </div>
+      )}
+      {canvasState.mode === CanvasMode.Connecting && (
+        <div className="absolute top-4 left-1/2 z-30 -translate-x-1/2 rounded-2xl border border-neutral-200/80 bg-white/95 px-4 py-3 text-sm font-medium text-neutral-700 shadow-[0_10px_30px_rgba(15,23,42,0.14)] backdrop-blur">
+          {canvasState.sourceId ? "Choose a second shape to connect" : "Choose the first shape to connect"}
+        </div>
+      )}
+      <div className="absolute bottom-5 right-4 flex flex-col items-center rounded-2xl border border-neutral-200/80 bg-white/95 p-1.5 shadow-[0_12px_32px_rgba(15,23,42,0.1)] backdrop-blur">
         <ToolButton
           label="Zoom In"
           icon={ZoomIn}

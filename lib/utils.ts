@@ -31,6 +31,7 @@ export function ColorToCSS(color:Color){
 
 
 export function resizeBounds(bounds:XYWH,corner:Side,point:Point){
+  const minSize = 20;
   const result={
     x:bounds.x,
     y:bounds.y,
@@ -38,20 +39,20 @@ export function resizeBounds(bounds:XYWH,corner:Side,point:Point){
     height:bounds.height,
   }
   if((corner & Side.Left) === Side.Left){
-    result.x=Math.min(point.x,bounds.x+bounds.width);
-    result.width=Math.abs(bounds.x+bounds.width-point.x);
+    result.x=Math.min(point.x,bounds.x+bounds.width-minSize);
+    result.width=Math.max(minSize, bounds.x+bounds.width-point.x);
   }
   if((corner & Side.Right)===Side.Right){
-    result.x=Math.min(point.x,bounds.x);
-    result.width=Math.abs(point.x-bounds.x);
+    result.x=bounds.x;
+    result.width=Math.max(minSize, point.x-bounds.x);
   }
   if((corner & Side.Top)===Side.Top){
-    result.y=Math.min(point.y,bounds.y+bounds.height);
-    result.height=Math.abs(bounds.y+bounds.height-point.y);
+    result.y=Math.min(point.y,bounds.y+bounds.height-minSize);
+    result.height=Math.max(minSize, bounds.y+bounds.height-point.y);
   }
   if((corner & Side.Bottom)===Side.Bottom){
-    result.y=Math.min(point.y,bounds.y);
-    result.height=Math.abs(point.y-bounds.y);
+    result.y=bounds.y;
+    result.height=Math.max(minSize, point.y-bounds.y);
   }
   return result;
 }
@@ -99,7 +100,8 @@ export function getContrastingTextColor(color: Color) {
 
 export function penPointsToPathLayer(
   points: number[][],
-  color: Color
+  color: Color,
+  strokeWidth = 8,
 ): PathLayer {
   if (points.length < 2) {
     throw new Error("Cannot transform points with less than 2 points");
@@ -138,6 +140,7 @@ export function penPointsToPathLayer(
     height: bottom - top,
     fill: color,
     points: points.map(([x, y, pressure]) => [x - left, y - top, pressure]),
+    strokeWidth,
   };
 }
 

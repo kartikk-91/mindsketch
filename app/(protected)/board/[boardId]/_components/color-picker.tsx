@@ -31,7 +31,7 @@ export const ColorPicker = ({ onChange }: ColorPickerProps) => {
         className="w-8 h-8 rounded-md border border-neutral-300
                    bg-[linear-gradient(45deg,#ccc_25%,transparent_25%,transparent_50%,#ccc_50%,#ccc_75%,transparent_75%,transparent)]
                    bg-[length:8px_8px]"
-        onClick={() => onChange({r:-1,g:-1,b:-1})}
+        onClick={() => onChange(null)}
       />
 
             <label

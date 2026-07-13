@@ -2,7 +2,7 @@
 
 import { cn, ColorToCSS, getContrastingTextColor } from "@/lib/utils";
 import { useMutation } from "@liveblocks/react";
-import { NoteFontFamily, NoteLayer } from "@/types/canvas";
+import { Color, NoteFontFamily, NoteLayer } from "@/types/canvas";
 import ContentEditable, { ContentEditableEvent } from "react-contenteditable";
 import {
   Kalam,
@@ -25,6 +25,18 @@ const fonts: Record<NoteFontFamily, { className: string }> = {
   mono,
   serif,
 };
+
+const tint = (color: Color, amount: number): Color => ({
+  r: Math.round(color.r + (255 - color.r) * amount),
+  g: Math.round(color.g + (255 - color.g) * amount),
+  b: Math.round(color.b + (255 - color.b) * amount),
+});
+
+const shade = (color: Color, amount: number): Color => ({
+  r: Math.round(color.r * (1 - amount)),
+  g: Math.round(color.g * (1 - amount)),
+  b: Math.round(color.b * (1 - amount)),
+});
 
 
 
@@ -55,6 +67,7 @@ export function Note({
     fontSize = 16,
     fontWeight = "regular",
     padding = 14,
+    opacity = 1,
   } = layer;
 
   const cx = x + width / 2;
@@ -75,6 +88,9 @@ export function Note({
   };
 
   const fontClass = fonts[fontFamily].className;
+  const baseColor = fill ?? { r: 254, g: 202, b: 202 };
+  const backgroundColor = tint(baseColor, 0.24);
+  const foldColor = shade(baseColor, 0.28);
 
   return (
     <g transform={`rotate(${rotation} ${cx} ${cy})`}>
@@ -90,52 +106,17 @@ export function Note({
           data-export-note="true"
           data-export-selected={selectionColor ? "true" : undefined}
           className={cn(
-            "relative w-full h-full rounded-lg overflow-hidden",
-           
-            "shadow-[0_6px_14px_rgba(0,0,0,0.18),0_2px_4px_rgba(0,0,0,0.12)]"
+            "relative h-full w-full overflow-hidden rounded-[3px]",
+            "shadow-[0_4px_12px_rgba(15,23,42,0.16)]"
           )}
           style={{
-            backgroundColor: fill ? ColorToCSS(fill) : "#FFF6A5",
+              backgroundColor: ColorToCSS(backgroundColor),
+              opacity,
             outline: selectionColor
               ? `2px solid ${selectionColor}`
-              : "1px solid rgba(0,0,0,0.06)",
+              : "1px solid rgba(15,23,42,0.10)",
           }}
         >
-                    <div
-            data-export-decorative="true"
-            className="absolute inset-0 pointer-events-none"
-            style={{
-              backgroundImage:
-                "repeating-radial-gradient(circle at 0 0, rgba(0,0,0,0.03) 0, rgba(0,0,0,0.03) 1px, transparent 1px, transparent 3px)",
-              opacity: 0.25,
-            }}
-          />
-
-                    <div
-            data-export-decorative="true"
-            className="absolute inset-0 pointer-events-none"
-            style={{
-              boxShadow: "inset 0 1px 0 rgba(255,255,255,0.35)",
-            }}
-          />
-
-                    <div data-export-decorative="true" className="absolute top-0 right-0 w-0 h-0 pointer-events-none">
-                        <div
-              className="absolute -left-[22px] top-0 w-0 h-0"
-              style={{
-                borderTop: "22px solid rgba(0,0,0,0.15)",
-                borderLeft: "22px solid transparent",
-              }}
-            />
-                        <div
-              className="absolute -left-[20px] top-0 w-0 h-0"
-              style={{
-                borderTop: "20px solid rgba(255,255,255,0.55)",
-                borderLeft: "20px solid transparent",
-              }}
-            />
-          </div>
-
           <ContentEditable
             html={value || ""}
             onChange={handleChange}
@@ -151,9 +132,15 @@ export function Note({
               fontSize,
               fontWeight: fontWeight === "bold" ? 700 : 400,
               lineHeight: 1.55,
-              color: fill
-                ? getContrastingTextColor(fill)
-                : "#222",
+              color: getContrastingTextColor(backgroundColor),
+            }}
+          />
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute bottom-0 right-0 h-5 w-5"
+            style={{
+              background: ColorToCSS(foldColor),
+              clipPath: "polygon(100% 0, 0 100%, 100% 100%)",
             }}
           />
         </div>
