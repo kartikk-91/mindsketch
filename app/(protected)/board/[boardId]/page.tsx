@@ -3,8 +3,9 @@
 import { Canvas } from "./_components/canvas";
 import { Room } from "@/components/room";
 import { Loading } from "./_components/loading";
+import { BoardAccessState } from "./_components/board-access-state";
 import { useEffect, useState } from "react";
-import { useBoard } from "@/hooks/use-board";
+import { BoardRequestError, useBoard } from "@/hooks/use-board";
 
 export default function BoardPage({
   params,
@@ -22,12 +23,17 @@ export default function BoardPage({
     resolveParams();
   }, [params]);
 
-  const { data: board, isLoading: loading } = useBoard(
+  const { data: board, error, isLoading: loading } = useBoard(
     resolvedParams?.boardId ?? ""
   );
 
-  if (!resolvedParams || loading || !board) {
+  if (!resolvedParams || loading) {
     return <Loading />;
+  }
+
+  if (error || !board) {
+    const status = error instanceof BoardRequestError ? error.status : 500;
+    return <BoardAccessState status={status} />;
   }
 
   return (

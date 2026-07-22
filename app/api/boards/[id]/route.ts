@@ -9,7 +9,7 @@ export async function GET(
   try {
     const { id } = await params
 
-    const { userId } = await auth()
+    const { userId, orgId } = await auth()
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
@@ -20,6 +20,13 @@ export async function GET(
 
     if (!board) {
       return NextResponse.json({ error: 'Board not found' }, { status: 404 })
+    }
+
+    if (!orgId || board.orgId !== orgId) {
+      return NextResponse.json(
+        { error: 'You are not a member of this board\'s organization.' },
+        { status: 403 }
+      )
     }
 
     return NextResponse.json(board)
@@ -36,9 +43,18 @@ export async function PATCH(
   try {
     const { id } = await params
 
-    const { userId } = await auth()
+    const { userId, orgId } = await auth()
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const existingBoard = await prisma.board.findUnique({ where: { id } })
+    if (!existingBoard) {
+      return NextResponse.json({ error: 'Board not found' }, { status: 404 })
+    }
+
+    if (!orgId || existingBoard.orgId !== orgId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
     }
 
     const body = await req.json()
@@ -82,9 +98,18 @@ export async function DELETE(
   try {
     const { id } = await params
 
-    const { userId } = await auth()
+    const { userId, orgId } = await auth()
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const board = await prisma.board.findUnique({ where: { id } })
+    if (!board) {
+      return NextResponse.json({ error: 'Board not found' }, { status: 404 })
+    }
+
+    if (!orgId || board.orgId !== orgId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
     }
 
     await prisma.userFavorite.deleteMany({

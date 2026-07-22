@@ -1,9 +1,60 @@
 import Image from "next/image";
-import { Sparkles } from "lucide-react";
+import { Sparkles, Square, Volume2 } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { MarkdownContent } from "./markdown-content";
 
 export type ChatImagePreview = { previewUrl: string; name?: string };
 export type DisplayMessage = { id: string; role: "user" | "assistant"; content: string; image?: ChatImagePreview };
+
+function spokenText(markdown: string) {
+  return markdown
+    .replace(/```[\s\S]*?```/g, " code block ")
+    .replace(/`([^`]+)`/g, "$1")
+    .replace(/!?\[([^\]]*)\]\([^)]*\)/g, "$1")
+    .replace(/^[#>*-]+\s*/gm, "")
+    .replace(/[*_~]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function ReadAloudButton({ content }: { content: string }) {
+  const [speaking, setSpeaking] = useState(false);
+  const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
+
+  useEffect(() => () => {
+    if (utteranceRef.current) window.speechSynthesis?.cancel();
+  }, []);
+
+  const toggleSpeech = () => {
+    if (!("speechSynthesis" in window)) return;
+    if (speaking) {
+      window.speechSynthesis.cancel();
+      setSpeaking(false);
+      return;
+    }
+
+    const utterance = new SpeechSynthesisUtterance(spokenText(content));
+    utterance.rate = 1;
+    utterance.onend = () => setSpeaking(false);
+    utterance.onerror = () => setSpeaking(false);
+    utteranceRef.current = utterance;
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(utterance);
+    setSpeaking(true);
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={toggleSpeech}
+      className="mb-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-stroke bg-white text-waterloo shadow-solid-2 transition hover:border-[#20C5A8] hover:bg-[#F2FBE3] hover:text-[#149C86]"
+      aria-label={speaking ? "Stop reading response" : "Read response aloud"}
+      title={speaking ? "Stop reading" : "Read aloud"}
+    >
+      {speaking ? <Square className="h-3 w-3 fill-current" /> : <Volume2 className="h-3.5 w-3.5" />}
+    </button>
+  );
+}
 
 export function MessageBubble({ message }: { message: DisplayMessage }) {
   const isUser = message.role === "user";
@@ -28,6 +79,7 @@ export function MessageBubble({ message }: { message: DisplayMessage }) {
         )}
         {isUser ? <p className="whitespace-pre-wrap">{message.content}</p> : message.content ? <MarkdownContent content={message.content} /> : null}
       </article>
+      {!isUser && message.content && <ReadAloudButton content={message.content} />}
     </div>
   );
 }
