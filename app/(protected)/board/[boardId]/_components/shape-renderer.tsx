@@ -574,7 +574,7 @@ export const ShapeRenderer = ({
       {!isCodeShape && selectionProps && renderShape(selectionProps)}
       {supportsShapeText && layer.value && !isEditing && (
         <foreignObject data-export-shape-text="true" x={labelBounds.x} y={labelBounds.y} width={labelBounds.width} height={labelBounds.height} pointerEvents="none" style={{ border: "none", outline: "none", overflow: "hidden" }}>
-          <div className="grid h-full w-full min-h-0 min-w-0 content-center overflow-auto whitespace-pre-wrap break-words text-sm font-medium leading-5 text-neutral-900 [overflow-wrap:anywhere]" style={{ textAlign: (layer as any).textAlign ?? "center", fontFamily: (layer as any).fontFamily ?? "inherit", fontWeight: (layer as any).fontWeight === "bold" ? 700 : 500, fontSize: (layer as any).fontSize ?? 14 }}>
+          <div className="grid h-full w-full min-h-0 min-w-0 content-center overflow-auto whitespace-pre-wrap break-words text-sm font-medium leading-5 text-neutral-900" style={{ textAlign: (layer as any).textAlign ?? "center", fontFamily: (layer as any).fontFamily ?? "inherit", fontWeight: (layer as any).fontWeight === "bold" ? 700 : 500, fontSize: (layer as any).fontSize ?? 14 }}>
             <span className="block w-full">{plainCode(layer.value)}</span>
           </div>
         </foreignObject>
@@ -605,7 +605,7 @@ export const ShapeRenderer = ({
               setIsEditing(false);
             }}
             onPointerDown={(event) => event.stopPropagation()}
-            className="h-full w-full resize-none overflow-auto bg-transparent p-0 whitespace-pre-wrap break-words text-sm font-medium leading-5 text-neutral-900 outline-none [overflow-wrap:anywhere]"
+            className="h-full w-full resize-none overflow-auto bg-transparent p-0 whitespace-pre-wrap break-words text-sm font-medium leading-5 text-neutral-900 outline-none"
             style={{ pointerEvents: "auto", textAlign: (layer as any).textAlign ?? "center", fontFamily: (layer as any).fontFamily ?? "inherit", fontWeight: (layer as any).fontWeight === "bold" ? 700 : 500, fontSize: (layer as any).fontSize ?? 14 }}
           />
         </foreignObject>

@@ -9,6 +9,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import { cn } from "@/lib/utils";
 import { CreateOrganizationModal } from "@/components/create-organization-modal";
 import { InviteModal } from "@/components/invite-modal";
+import { OrganizationMembersModal } from "@/components/organization-members-modal";
 
 interface OrganizationSwitcherProps {
   variant?: "desktop" | "mobile";
@@ -16,10 +17,12 @@ interface OrganizationSwitcherProps {
 
 export const OrganizationSwitcher = ({ variant = "desktop" }: OrganizationSwitcherProps) => {
   const { isLoaded, setActive, userInvitations, userMemberships } = useOrganizationList({ userMemberships: true, userInvitations: true });
-  const { organization } = useOrganization();
+  const { organization, membership } = useOrganization();
   const [createOrgOpen, setCreateOrgOpen] = useState(false);
   const [inviteOpen, setInviteOpen] = useState(false);
   const [acceptingId, setAcceptingId] = useState<string | null>(null);
+  const [membersOpen, setMembersOpen] = useState(false);
+  const isAdmin = membership?.role === "org:admin";
 
   const currentOrg = userMemberships?.data?.find((membership) => membership.organization.id === organization?.id);
   const invitations = userInvitations?.data ?? [];
@@ -82,12 +85,14 @@ export const OrganizationSwitcher = ({ variant = "desktop" }: OrganizationSwitch
             </DropdownMenuItem>)}
           </>}
           <DropdownMenuSeparator className="my-1.5 bg-[#EEF0EC]" />
-          <DropdownMenuItem disabled={!organization} onSelect={() => setInviteOpen(true)} className="rounded-xl px-3 py-2.5 text-[#555B68] focus:bg-[#F3F8F4] focus:text-[#181C31]"><UserPlus className="h-4 w-4 text-[#159A83]" /><span className="text-sm font-medium">Invite collaborators</span></DropdownMenuItem>
+          <DropdownMenuItem disabled={!organization} onSelect={() => setMembersOpen(true)} className="rounded-xl px-3 py-2.5 text-[#555B68] focus:bg-[#F3F8F4] focus:text-[#181C31]"><Users className="h-4 w-4 text-[#159A83]" /><span className="text-sm font-medium">View members</span></DropdownMenuItem>
+          {isAdmin && <DropdownMenuItem disabled={!organization} onSelect={() => setInviteOpen(true)} className="rounded-xl px-3 py-2.5 text-[#555B68] focus:bg-[#F3F8F4] focus:text-[#181C31]"><UserPlus className="h-4 w-4 text-[#159A83]" /><span className="text-sm font-medium">Invite collaborators</span></DropdownMenuItem>}
           <DropdownMenuItem onSelect={() => setCreateOrgOpen(true)} className="rounded-xl px-3 py-2.5 text-[#555B68] focus:bg-[#F3F8F4] focus:text-[#181C31]"><Plus className="h-4 w-4 text-[#159A83]" /><span className="text-sm font-medium">Create workspace</span></DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
       <CreateOrganizationModal open={createOrgOpen} onOpenChange={setCreateOrgOpen} />
       <InviteModal open={inviteOpen} onOpenChange={setInviteOpen} orgId={organization?.id} />
+      <OrganizationMembersModal open={membersOpen} onOpenChange={setMembersOpen} />
     </>
   );
 };

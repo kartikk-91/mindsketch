@@ -7,6 +7,7 @@ interface Board {
   authorId: string;
   authorName: string;
   createdAt: string;
+  updatedAt: string;
   orgId: string;
   isFavorite: boolean;
   templateId?: string | null;

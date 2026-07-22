@@ -20,6 +20,7 @@ interface Board {
   authorId: string;
   authorName: string;
   createdAt: string;
+  updatedAt: string;
   orgId: string;
   isFavorite: boolean;
 }
@@ -71,7 +72,7 @@ const GridCard = ({ board }: { board: Board }) => {
   const [pendingFav, setPendingFav] = useState(false);
 
   const authorLabel = userId === board.authorId ? "You" : board.authorName;
-  const timeLabel = formatDistanceToNow(new Date(board.createdAt), {
+  const timeLabel = formatDistanceToNow(new Date(board.updatedAt), {
     addSuffix: true,
   });
 
@@ -135,7 +136,7 @@ const GridCard = ({ board }: { board: Board }) => {
             {board.title}
           </p>
           <p className="text-[11px] text-[#696969] mt-0.5 truncate">
-            {authorLabel} &middot; {timeLabel}
+            {authorLabel} &middot; Last edited {timeLabel}
           </p>
         </div>
 

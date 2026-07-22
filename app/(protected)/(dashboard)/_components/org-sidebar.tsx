@@ -7,9 +7,11 @@ import Image from "next/image";
 import { useDashboard } from "../dashboard-context";
 import { UserMenu } from "@/components/user-menu";
 import { OrganizationSwitcher } from "@/components/organization-switcher"; 
+import { useUser } from "@clerk/nextjs";
 
 export const OrgSidebar = () => {
   const { view, setView } = useDashboard(); 
+  const { user } = useUser();
 
   return (
     <aside className="hidden lg:flex h-full w-[240px] flex-col border-r border-[#EEEEEE] bg-white">
@@ -65,10 +67,10 @@ export const OrgSidebar = () => {
           <UserMenu />
           <div className="flex flex-col min-w-0">
             <p className="text-[13px] font-medium text-[#181C31] truncate">
-              Mindsketch
+              {user?.fullName || "User"}
             </p>
             <p className="text-[11px] text-[#999AA1] truncate">
-              Your workspace
+              {user?.primaryEmailAddress?.emailAddress || ""}
             </p>
           </div>
         </div>

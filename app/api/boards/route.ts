@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { auth, currentUser } from '@clerk/nextjs/server'
+import { auth, clerkClient } from '@clerk/nextjs/server'
 import { prisma } from '@/lib/prisma'
 
 const PLACEHOLDER_IMAGES = [
@@ -48,7 +48,7 @@ export async function GET(req: NextRequest) {
           board: true,
         },
         orderBy: {
-          createdAt: 'desc',
+          board: { updatedAt: 'desc' },
         },
       })
 
@@ -69,7 +69,7 @@ export async function GET(req: NextRequest) {
           },
         },
         orderBy: {
-          createdAt: 'desc',
+          updatedAt: 'desc',
         },
       })
     } else {
@@ -78,7 +78,7 @@ export async function GET(req: NextRequest) {
           orgId,
         },
         orderBy: {
-          createdAt: 'desc',
+          updatedAt: 'desc',
         },
       })
     }
@@ -122,14 +122,15 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const user = await currentUser()
+    const client = await clerkClient()
+    const user = await client.users.getUser(userId)
     const imageUrl =
       PLACEHOLDER_IMAGES[Math.floor(Math.random() * PLACEHOLDER_IMAGES.length)]
 
     const authorName =
-      user?.firstName && user?.lastName
+      user.firstName && user.lastName
         ? `${user.firstName} ${user.lastName}`
-        : user?.firstName || user?.username || 'Unknown'
+        : user.firstName || user.username || 'Unknown'
 
     const board = await prisma.board.create({
       data: {

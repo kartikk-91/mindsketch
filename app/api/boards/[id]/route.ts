@@ -58,7 +58,12 @@ export async function PATCH(
     }
 
     const body = await req.json()
-    const { title } = body
+    const { title, touch } = body
+
+    if (touch === true) {
+      const board = await prisma.board.update({ where: { id }, data: { updatedAt: new Date() } })
+      return NextResponse.json(board)
+    }
 
     if (!title) {
       return NextResponse.json({ error: 'title is required' }, { status: 400 })

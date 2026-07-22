@@ -18,7 +18,7 @@ interface BoardCardProps {
   title: string;
   authorName: string;
   authorId: string;
-  createdAt: number;
+  updatedAt: number;
   imageUrl: string;
   orgId: string;
   isFavorite: boolean;
@@ -30,7 +30,7 @@ export const BoardCard = ({
   title,
   authorId,
   authorName,
-  createdAt,
+  updatedAt,
   imageUrl,
   orgId,
   isFavorite,
@@ -40,8 +40,8 @@ export const BoardCard = ({
 
   const authorLabel = userId === authorId ? "You" : authorName;
   const createdAtLabel =
-    createdAt !== 0
-      ? formatDistanceToNow(createdAt, { addSuffix: true })
+    updatedAt !== 0
+      ? formatDistanceToNow(updatedAt, { addSuffix: true })
       : "";
 
   const { favorite, unfavorite } = useFavoriteBoard();

@@ -18,12 +18,15 @@ interface ConfirmModalProps {
     disabled?: boolean;
     header: string;
     description?: string;
+    open?: boolean;
+    onOpenChange?: (open: boolean) => void;
+    actionLabel?: string;
 }
 
-export const ConfirmModal = ({ children, onConfirm, disabled, header, description }: ConfirmModalProps) => {
+export const ConfirmModal = ({ children, onConfirm, disabled, header, description, open, onOpenChange, actionLabel = "Delete" }: ConfirmModalProps) => {
         
     return (
-        <AlertDialog>
+        <AlertDialog open={open} onOpenChange={onOpenChange}>
             <AlertDialogTrigger asChild>
                 {children}
             </AlertDialogTrigger>
@@ -41,7 +44,7 @@ export const ConfirmModal = ({ children, onConfirm, disabled, header, descriptio
                         Cancel
                     </AlertDialogCancel>
                     <AlertDialogAction onClick={onConfirm} disabled={disabled} className="rounded-xl bg-red-500 hover:bg-red-600 text-white">
-                        Delete
+                        {actionLabel}
                     </AlertDialogAction>
                 </AlertDialogFooter>
             </AlertDialogContent>

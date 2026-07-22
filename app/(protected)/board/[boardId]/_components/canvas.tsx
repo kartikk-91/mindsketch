@@ -211,9 +211,16 @@ export const Canvas = ({ boardId }: CanvasProps) => {
     const rotateOrigins = useRef<Map<string, RotationOrigin>>(new Map());
     const activeSelectionFrame = useRef<SelectionFrame | null>(null);
     const erasedLayerIds = useRef<Set<string>>(new Set());
+    const hasLoadedBoardStorage = useRef(false);
 
 
     const layerIds = useStorage((root) => root.layerIds);
+    // Subscribe to the complete canvas storage, not presence. This deliberately excludes
+    // opening, cursor movement, and selection changes from the "last modified" timestamp.
+    const canvasContentVersion = useStorage((root) => JSON.stringify({
+        layers: Array.from(root.layers.entries()),
+        layerIds: Array.from(root.layerIds),
+    }));
     const pencilDraft = useSelf((me) => me.presence.pencilDraft);
     const [canvasState, setCanvasState] = useState<CanvasState>({
         mode: CanvasMode.None,
@@ -257,6 +264,24 @@ export const Canvas = ({ boardId }: CanvasProps) => {
     };
 
     const [clipboard, setClipboard] = useState<ClipboardItem[] | null>(null);
+
+    useEffect(() => {
+        if (!layerIds || !canvasContentVersion) return;
+        if (!hasLoadedBoardStorage.current) {
+            hasLoadedBoardStorage.current = true;
+            return;
+        }
+
+        const timeout = window.setTimeout(() => {
+            void fetch(`/api/boards/${boardId}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ touch: true }),
+            });
+        }, 1500);
+
+        return () => window.clearTimeout(timeout);
+    }, [boardId, layerIds, canvasContentVersion]);
 
     useDisableScrollBounce();
     const onWheel = useCallback((e: React.WheelEvent) => {
