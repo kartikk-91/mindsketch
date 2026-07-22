@@ -16,6 +16,7 @@ interface ShareActionProps {
 const ShareActions = ({ id }: ShareActionProps) => {
   const [exporting, setExporting] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
+  const [chatMounted, setChatMounted] = useState(false);
  
 
  
@@ -44,6 +45,7 @@ const ShareActions = ({ id }: ShareActionProps) => {
   };
 
   const handleOpenChat = () => {
+    setChatMounted(true);
     setChatOpen(true);
   };
 
@@ -80,7 +82,7 @@ const ShareActions = ({ id }: ShareActionProps) => {
           />
         </button>
 
-        {chatOpen && <FrameChatPanel onClose={handleCloseChat} />}
+        {chatMounted && <FrameChatPanel boardId={id} isOpen={chatOpen} onClose={handleCloseChat} />}
       </div>
 
     

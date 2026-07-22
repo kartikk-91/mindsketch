@@ -1,7 +1,5 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextRequest } from "next/server";
 import { auth } from "@clerk/nextjs/server";
-import { GoogleGenAI } from "@google/genai";
 
 type ChatMessage = { role: "user" | "assistant"; content: string };
 type ChatImage = { imageBase64: string; mimeType: string };
@@ -18,9 +16,10 @@ const IMAGE_ANALYSIS_PROMPT = `You are an image understanding engine. Analyze th
 
 const CHAT_SYSTEM_PROMPT = "You are a helpful assistant discussing a MindSketch board. Be clear and practical. Use the supplied image analysis when it is relevant, but do not claim to see information that is not in it.";
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
-
-
+// Both models are open-weight models served through Groq's OpenAI-compatible API. Llama 4
+// Scout handles the board image once, while GPT-OSS answers the rest of the conversation from
+// that retained analysis.
+const VISION_MODEL = "meta-llama/llama-4-scout-17b-16e-instruct";
 const GROQ_MODEL = "openai/gpt-oss-20b";
 
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
@@ -47,20 +46,30 @@ function friendlyError() {
 }
 
 async function analyzeImage(image: ChatImage): Promise<string> {
-  if (!process.env.GEMINI_API_KEY) throw new Error("Gemini is not configured");
-  const response = await ai.models.generateContent({
-    model: "gemini-3.5-flash",
-    config: { temperature: 0.1, maxOutputTokens: 8192 },
-    contents: [{
-      role: "user",
-      parts: [
-        { text: IMAGE_ANALYSIS_PROMPT },
-        { inlineData: { mimeType: image.mimeType, data: image.imageBase64 } },
-      ],
-    }],
+  if (!process.env.GROQ_API_KEY) throw new Error("Groq is not configured");
+  const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
+    },
+    body: JSON.stringify({
+      model: VISION_MODEL,
+      messages: [{
+        role: "user",
+        content: [
+          { type: "text", text: IMAGE_ANALYSIS_PROMPT },
+          { type: "image_url", image_url: { url: `data:${image.mimeType};base64,${image.imageBase64}` } },
+        ],
+      }],
+      temperature: 0.1,
+      max_completion_tokens: 8192,
+    }),
   });
-  const analysis = response.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!analysis) throw new Error("Gemini returned no image analysis");
+  if (!response.ok) throw new Error(`Vision request failed (${response.status})`);
+  const payload = await response.json();
+  const analysis = payload.choices?.[0]?.message?.content;
+  if (!analysis) throw new Error("Vision model returned no image analysis");
   return analysis;
 }
 
@@ -113,21 +122,6 @@ async function streamGroq(messages: ChatMessage[], imageAnalysis: string | undef
   }
 }
 
-async function fallbackToGemini(messages: ChatMessage[], imageAnalysis?: string) {
-  if (!process.env.GEMINI_API_KEY) throw new Error("Gemini is not configured");
-  const response = await ai.models.generateContent({
-    model: "gemini-3.5-flash",
-    config: { temperature: 0.4, maxOutputTokens: 1024 },
-    contents: [{
-      role: "user",
-      parts: [{ text: `${CHAT_SYSTEM_PROMPT}\n\n${imageAnalysis ? `Image analysis:\n${imageAnalysis}\n\n` : ""}Conversation:\n${messages.map((message) => `${message.role}: ${message.content}`).join("\n")}\nassistant:` }],
-    }],
-  });
-  const reply = response.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!reply) throw new Error("Gemini returned no fallback response");
-  return reply;
-}
-
 export async function POST(req: NextRequest) {
   const { userId } = await auth();
   if (!userId) return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 });
@@ -145,8 +139,8 @@ export async function POST(req: NextRequest) {
     async start(controller) {
       const emit = (type: string, value: string) => controller.enqueue(event(type, value));
       try {
-        // Gemini is intentionally only a vision-to-knowledge step. The analysis is returned to
-        // the client session and reused for every later question about this same image.
+        // Vision runs once per board session. The client retains this analysis for all later
+        // questions, so neither the screenshot nor the vision model is sent again.
         let imageAnalysis = body.imageAnalysis;
         if (body.image && (!imageAnalysis || body.forceAnalysis)) {
           emit("status", "Understanding the image…");
@@ -155,14 +149,7 @@ export async function POST(req: NextRequest) {
         }
 
         emit("status", "Thinking…");
-        try {
-          await streamGroq(body.messages, imageAnalysis, emit);
-        } catch (groqError) {
-          console.warn("Groq failed; using Gemini fallback:", groqError);
-          emit("status", "Finishing your reply…");
-          emit("token", await fallbackToGemini(body.messages, imageAnalysis));
-          emit("fallback", "gemini");
-        }
+        await streamGroq(body.messages, imageAnalysis, emit);
         emit("done", "");
       } catch (error) {
         console.error("frame-chat error:", error);

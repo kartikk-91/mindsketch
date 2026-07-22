@@ -10,7 +10,7 @@ export function MessageBubble({ message }: { message: DisplayMessage }) {
   return (
     <div className={`flex items-end gap-2 ${isUser ? "justify-end" : "justify-start"}`}>
       {!isUser && (
-        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-meta to-emerald-600 text-white shadow-solid-2">
+        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#20C5A8] via-[#A9DF52] to-[#FFB800] text-white shadow-solid-2">
           <Sparkles className="h-3.5 w-3.5" />
         </div>
       )}

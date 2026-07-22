@@ -62,7 +62,7 @@ function getVisibleContentBounds(sourceLayers: SVGGElement): DOMRect | null {
   return new DOMRect(left, top, right - left, bottom - top);
 }
 
-function createExportSvg(): { svg: SVGSVGElement; width: number; height: number } | null {
+function createExportSvg(): { root: HTMLDivElement; svg: SVGSVGElement; width: number; height: number } | null {
   const sourceLayers = document.getElementById("export-layers") as SVGGElement | null;
   if (!sourceLayers) return null;
 
@@ -81,11 +81,20 @@ function createExportSvg(): { svg: SVGSVGElement; width: number; height: number 
   svg.setAttribute("height", String(height));
   svg.setAttribute("viewBox", `${x} ${y} ${width} ${height}`);
   svg.setAttribute("aria-hidden", "true");
-  svg.style.position = "fixed";
-  svg.style.left = "-100000px";
-  svg.style.top = "0";
-  svg.style.pointerEvents = "none";
+  svg.style.display = "block";
   svg.style.background = "#ffffff";
+
+  // dom-to-image-more reliably rasterizes HTML roots containing SVG, but can fail when it is
+  // given a detached SVG fragment directly (notably when that fragment contains foreignObject
+  // sticky notes). Keep the SVG isolated and cropped, then render it through an HTML surface.
+  const root = document.createElement("div");
+  root.style.position = "fixed";
+  root.style.left = "-100000px";
+  root.style.top = "0";
+  root.style.width = `${width}px`;
+  root.style.height = `${height}px`;
+  root.style.pointerEvents = "none";
+  root.style.background = "#ffffff";
 
   const background = document.createElementNS("http://www.w3.org/2000/svg", "rect");
   background.setAttribute("x", String(x));
@@ -139,8 +148,9 @@ function createExportSvg(): { svg: SVGSVGElement; width: number; height: number 
   });
 
   svg.appendChild(layers);
-  document.body.appendChild(svg);
-  return { svg, width, height };
+  root.appendChild(svg);
+  document.body.appendChild(root);
+  return { root, svg, width, height };
 }
 
 export async function captureFrame(format: ExportFormat, quality?: number): Promise<string | null> {
@@ -157,13 +167,13 @@ export async function captureFrame(format: ExportFormat, quality?: number): Prom
       cacheBust: true,
     };
     return format === "png"
-      ? await domtoimage.toPng(capture.svg, options)
-      : await domtoimage.toJpeg(capture.svg, { ...options, quality: quality ?? 0.82 });
+      ? await domtoimage.toPng(capture.root, options)
+      : await domtoimage.toJpeg(capture.root, { ...options, quality: quality ?? 0.82 });
   } catch (error) {
     console.error("Frame export failed", error);
     return null;
   } finally {
-    capture.svg.remove();
+    capture.root.remove();
   }
 }
 

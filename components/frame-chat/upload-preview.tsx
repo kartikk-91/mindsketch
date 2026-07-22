@@ -18,7 +18,7 @@ export function UploadButton({ onClick }: { onClick: () => void }) {
     <button
       type="button"
       onClick={onClick}
-      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-stroke bg-white text-waterloo transition hover:border-meta hover:text-meta"
+      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-stroke bg-white text-waterloo transition hover:border-[#20C5A8] hover:bg-[#F2FBE3] hover:text-[#149C86]"
       aria-label="Attach image"
     >
       <ImagePlus className="h-4 w-4" />

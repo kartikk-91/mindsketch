@@ -1,7 +1,7 @@
 "use client";
 
 import { ChangeEvent, DragEvent, useCallback, useEffect, useRef, useState } from "react";
-import { Clock, Loader2, Send, Sparkles, X } from "lucide-react";
+import { Clock, Loader2, RefreshCw, Send, Sparkles, X } from "lucide-react";
 import { getFrameForChat, fileToCompressedChatImage } from "@/lib/explain-frame";
 import { MessageBubble, type ChatImagePreview, type DisplayMessage } from "./frame-chat/message-bubble";
 import { UploadButton, UploadPreview } from "./frame-chat/upload-preview";
@@ -10,31 +10,59 @@ type ChatImage = ChatImagePreview & { imageBase64: string; mimeType: string };
 type ChatMessage = DisplayMessage & { analysis?: string };
 type StreamEvent = { type: "analysis" | "token" | "status" | "done" | "error" | "fallback"; value: string };
 
-interface FrameChatPanelProps { onClose: () => void; }
+interface FrameChatPanelProps { boardId: string; isOpen: boolean; onClose: () => void; }
 
 const INITIAL_QUESTION = "What do you see on this board? Give me a brief overview.";
 
 const needsFreshAnalysis = (message: string) => /\b(re-?analy[sz]e|run ocr|read (?:the )?(?:small|tiny|hidden) (?:text|code)|extract (?:the )?(?:text|code))\b/i.test(message);
 
-export const FrameChatPanel = ({ onClose }: FrameChatPanelProps) => {
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+type FrameChatSession = {
+  activeImage: ChatImage | null;
+  hasStarted: boolean;
+  imageAnalysis: string | null;
+  isFirstReply: boolean;
+  messages: ChatMessage[];
+};
+
+// Preserved when the panel closes, but reset automatically by a browser reload.
+const frameChatSessions = new Map<string, FrameChatSession>();
+
+function getSession(boardId: string): FrameChatSession {
+  return frameChatSessions.get(boardId) ?? {
+    activeImage: null,
+    hasStarted: false,
+    imageAnalysis: null,
+    isFirstReply: true,
+    messages: [],
+  };
+}
+
+export const FrameChatPanel = ({ boardId, isOpen, onClose }: FrameChatPanelProps) => {
+  const initialSession = getSession(boardId);
+  const [messages, setMessages] = useState<ChatMessage[]>(initialSession.messages);
   const [input, setInput] = useState("");
   const [pendingImage, setPendingImage] = useState<ChatImage | null>(null);
-  const [activeImage, setActiveImage] = useState<ChatImage | null>(null);
-  const [imageAnalysis, setImageAnalysis] = useState<string | null>(null);
-  const [status, setStatus] = useState("Preparing board…");
-  const [isGenerating, setIsGenerating] = useState(true);
+  const [activeImage, setActiveImage] = useState<ChatImage | null>(initialSession.activeImage);
+  const [imageAnalysis, setImageAnalysis] = useState<string | null>(initialSession.imageAnalysis);
+  const [status, setStatus] = useState(initialSession.hasStarted ? "" : "Preparing board…");
+  const [isGenerating, setIsGenerating] = useState(!initialSession.hasStarted);
   const [error, setError] = useState<string | null>(null);
   const [dragActive, setDragActive] = useState(false);
-  // The very first reply has to run a vision pass plus a free-tier completion, so it is
+  // The very first reply has to run a vision pass plus a completion, so it is
   // meaningfully slower than every follow-up. We only want to warn about that once.
-  const [isFirstReply, setIsFirstReply] = useState(true);
+  const [isFirstReply, setIsFirstReply] = useState(initialSession.isFirstReply);
+  const [hasStarted, setHasStarted] = useState(initialSession.hasStarted);
+  const [restartNonce, setRestartNonce] = useState(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const lastRequestRef = useRef<{ text: string; image?: ChatImage; forceAnalysis?: boolean } | null>(null);
 
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, status]);
+
+  useEffect(() => {
+    frameChatSessions.set(boardId, { activeImage, hasStarted, imageAnalysis, isFirstReply, messages });
+  }, [activeImage, boardId, hasStarted, imageAnalysis, isFirstReply, messages]);
 
   const appendStream = useCallback(async (response: Response, assistantId: string, analyzedMessageId?: string) => {
     if (!response.ok || !response.body) throw new Error("The assistant is temporarily unavailable.");
@@ -108,13 +136,16 @@ export const FrameChatPanel = ({ onClose }: FrameChatPanelProps) => {
   }, [activeImage, appendStream, imageAnalysis, isGenerating, messages]);
 
   useEffect(() => {
+    if (hasStarted || getSession(boardId).hasStarted) return;
+    frameChatSessions.set(boardId, { ...getSession(boardId), hasStarted: true });
+    setHasStarted(true);
     let cancelled = false;
     async function startFrameChat() {
       try {
         const capture = await getFrameForChat();
         if (!capture || cancelled) throw new Error("I couldn't capture this board. Please try again.");
         const image: ChatImage = { ...capture, previewUrl: `data:${capture.mimeType};base64,${capture.imageBase64}`, name: "Current board" };
-        // Let the normal hybrid path create and retain Gemini's analysis for this frame.
+        // The open-weight vision model analyzes this frame once; follow-ups reuse that analysis.
         await sendMessage(INITIAL_QUESTION, image, false, true);
       } catch (cause) {
         if (!cancelled) {
@@ -123,11 +154,26 @@ export const FrameChatPanel = ({ onClose }: FrameChatPanelProps) => {
         }
       }
     }
-    startFrameChat();
+    void startFrameChat();
     return () => { cancelled = true; };
-    // The panel initializes exactly once; `sendMessage` intentionally uses the empty initial history.
+    // This runs only for a new session or an explicit restart. `sendMessage` uses the empty
+    // history for the opening prompt.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [restartNonce]);
+
+  const restartChat = () => {
+    frameChatSessions.delete(boardId);
+    lastRequestRef.current = null;
+    setMessages([]);
+    setActiveImage(null);
+    setImageAnalysis(null);
+    setIsFirstReply(true);
+    setError(null);
+    setStatus("Preparing board…");
+    setIsGenerating(true);
+    setHasStarted(false);
+    setRestartNonce((current) => current + 1);
+  };
 
   const loadImage = async (file?: File) => {
     if (!file) return;
@@ -154,17 +200,20 @@ export const FrameChatPanel = ({ onClose }: FrameChatPanelProps) => {
   return (
     <section
       role="dialog"
-      aria-label="Frame chat"
-      className="absolute right-0 top-14 flex h-[min(640px,calc(100vh-5rem))] w-[calc(100vw-2rem)] max-w-[430px] flex-col overflow-hidden rounded-2xl border border-stroke bg-white shadow-solid-6 sm:w-[430px]"
+      aria-label="MindSketch AI chat"
+      className={`absolute right-0 top-14 flex h-[min(640px,calc(100vh-5rem))] w-[calc(100vw-2rem)] max-w-[430px] flex-col overflow-hidden rounded-2xl border border-stroke bg-white shadow-solid-6 sm:w-[430px] ${isOpen ? "" : "hidden"}`}
     >
       <header className="flex items-center gap-3 border-b border-stroke bg-white px-4 py-3.5">
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-meta to-emerald-600 text-white shadow-solid-2">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#20C5A8] via-[#A9DF52] to-[#FFB800] text-white shadow-solid-2">
           <Sparkles className="h-4 w-4" />
         </div>
         <div className="min-w-0 flex-1">
-          <h2 className="text-sm font-semibold text-black">Frame chat</h2>
-          <p className="truncate text-xs text-waterloo">Ask about your board or attach an image</p>
+          <h2 className="text-sm font-semibold text-black">MindSketch AI</h2>
+          <p className="truncate text-xs text-waterloo">Your board, in conversation</p>
         </div>
+        <button onClick={restartChat} disabled={isGenerating} className="rounded-full p-2 text-waterloo transition hover:bg-[#F2FBE3] hover:text-[#149C86] disabled:cursor-not-allowed disabled:opacity-40" aria-label="Restart chat" title="Restart chat">
+          <RefreshCw className="h-4 w-4" />
+        </button>
         <button onClick={onClose} className="rounded-full p-2 text-waterloo transition hover:bg-alabaster hover:text-black" aria-label="Close chat">
           <X className="h-4 w-4" />
         </button>
@@ -177,7 +226,7 @@ export const FrameChatPanel = ({ onClose }: FrameChatPanelProps) => {
           {isGenerating && (
             isFirstReply ? (
               <div className="flex items-start gap-2">
-                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-meta to-emerald-600 text-white shadow-solid-2">
+                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#20C5A8] via-[#A9DF52] to-[#FFB800] text-white shadow-solid-2">
                   <Sparkles className="h-3.5 w-3.5" />
                 </div>
                 <div className="flex max-w-[85%] flex-col gap-1.5 rounded-2xl rounded-bl-md border border-stroke bg-white px-3.5 py-2.5 shadow-solid-2">
@@ -187,7 +236,7 @@ export const FrameChatPanel = ({ onClose }: FrameChatPanelProps) => {
                   </div>
                   <div className="flex items-center gap-1.5 rounded-full bg-zumthor px-2.5 py-1 text-[11px] font-medium text-black">
                     <Clock className="h-3 w-3" />
-                    First reply can take a little longer — running on a free-tier API
+                    First reply takes a moment while the board is understood
                   </div>
                 </div>
               </div>
@@ -237,7 +286,7 @@ export const FrameChatPanel = ({ onClose }: FrameChatPanelProps) => {
           <button
             onClick={submit}
             disabled={isGenerating || (!input.trim() && !pendingImage)}
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-black text-white transition hover:bg-blackho disabled:cursor-not-allowed disabled:opacity-50"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#20C5A8] via-[#A9DF52] to-[#FFB800] text-white shadow-solid-2 transition hover:scale-105 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100"
             aria-label="Send message"
           >
             {isGenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
