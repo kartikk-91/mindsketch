@@ -1,6 +1,31 @@
 import { shallow } from "@liveblocks/client";
-import { Layer,XYWH } from "@/types/canvas";
+import { Layer, LayerType, ShapeLayer, ShapeType, XYWH } from "@/types/canvas";
 import { useStorage,useSelf } from "@liveblocks/react";
+
+const isOneDimensionalShape = (layer: Layer): layer is ShapeLayer =>
+    layer.type === LayerType.Shape && [
+        ShapeType.Line,
+        ShapeType.Arrow,
+        ShapeType.ArrowLeftLine,
+        ShapeType.ArrowBidirectionalLine,
+    ].includes(layer.shape);
+
+const layerBounds = (layer: Layer): XYWH => {
+    if (!isOneDimensionalShape(layer)) return layer;
+
+    // Ordinary arrows and lines are horizontal. Connector arrows use height as
+    // their endpoint delta, so only those need a vertical visual bound.
+    const endY = layer.shape === ShapeType.Arrow && (layer.startLayerId || layer.endLayerId)
+        ? layer.y + layer.height
+        : layer.y;
+    const padding = 10;
+    return {
+        x: Math.min(layer.x, layer.x + layer.width) - padding,
+        y: Math.min(layer.y, endY) - padding,
+        width: Math.abs(layer.width) + padding * 2,
+        height: Math.abs(endY - layer.y) + padding * 2,
+    };
+};
 
 const boundingBox = (layers: Layer[]): XYWH | null => {
     const first=layers[0];
@@ -8,14 +33,15 @@ const boundingBox = (layers: Layer[]): XYWH | null => {
         return null;
     }
 
-    let left=first.x;
-    let top=first.y;
-    let right=first.x+first.width;
-    let bottom=first.y+first.height;
+    const firstBounds = layerBounds(first);
+    let left=firstBounds.x;
+    let top=firstBounds.y;
+    let right=firstBounds.x+firstBounds.width;
+    let bottom=firstBounds.y+firstBounds.height;
 
 
     for(let i=1;i<layers.length;i++){
-        const {x,y,width,height}=layers[i];
+        const {x,y,width,height}=layerBounds(layers[i]);
         if(left>x){
             left=x;
         }

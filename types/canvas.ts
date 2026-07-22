@@ -42,7 +42,7 @@ export enum ShapeType {
     Pyramid,
     Cone,
     Document,
-    Database,
+  
     ArrowLeft,
     ArrowRight,
     ArrowBidirectional,
@@ -72,6 +72,8 @@ export type ShapeLayer = {
     /** Set only when the user explicitly chooses a connector port. */
     startSideLocked?: boolean;
     endSideLocked?: boolean;
+    /** Arrowhead arrangement used by connector arrows. */
+    arrowhead?: "right" | "left" | "both";
 
     rotation?: number;
     value?: string;

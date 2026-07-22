@@ -142,7 +142,23 @@ export const recognizeSmartShape = (rawPoints: number[][], color: Color, strokeW
   });
 
   const isClosed = distance(points[0], points[points.length - 1]) < Math.max(18, smallestSide * 0.28);
-  if (!isClosed) return looksLikeOpenArrow(points) ? build(ShapeType.Arrow) : null;
+  if (!isClosed && looksLikeOpenArrow(points)) {
+    const start = points[0];
+    const tip = points.reduce((furthest, point) => distance(point, start) > distance(furthest, start) ? point : furthest, points[1]);
+    const length = distance(start, tip);
+    const center = { x: (start.x + tip.x) / 2, y: (start.y + tip.y) / 2 };
+    // Store a horizontal arrow in local coordinates, then rotate it around its
+    // visible centre. This keeps recognition, selection, and rotation aligned.
+    return {
+      ...build(ShapeType.Arrow),
+      x: center.x - length / 2,
+      y: center.y,
+      width: length,
+      height: 0,
+      rotation: Math.atan2(tip.y - start.y, tip.x - start.x) * 180 / Math.PI,
+    };
+  }
+  if (!isClosed) return null;
   if (smallestSide < 30 || diagonal < 45) return null;
 
   const center = { x: x + width / 2, y: y + height / 2 };
@@ -164,8 +180,7 @@ export const recognizeSmartShape = (rawPoints: number[][], color: Color, strokeW
   if (looksLikeHeart(points, x, y, width, height)) return build(ShapeType.Heart);
 
   const aspect = Math.max(width, height) / Math.min(width, height);
-  if (aspect > 1.7 && corners.length > 5 && radialVariation < 0.2) return build(ShapeType.Capsule);
-  if (radialVariation < 0.08 && averageRadius > 0.84 && averageRadius < 1.12) return build(ShapeType.Ellipse);
+  if (aspect > 1.7 && corners.length > 7 && radialVariation < 0.2) return build(ShapeType.Capsule);
 
   if (corners.length === 4) {
     const edges = corners.map((corner, index) => vector(corner, corners[(index + 1) % 4]));
@@ -188,6 +203,9 @@ export const recognizeSmartShape = (rawPoints: number[][], color: Color, strokeW
     if (corners.length === 5) return build(ShapeType.Pentagon);
     if (corners.length === 6) return build(ShapeType.Hexagon);
   }
+  // Circle strokes retain substantially more simplified corners than polygons.
+  // Delaying this test prevents regular pentagons and hexagons becoming ellipses.
+  if (corners.length >= 7 && radialVariation < 0.1 && averageRadius > 0.8 && averageRadius < 1.16) return build(ShapeType.Ellipse);
   if (corners.length >= 7 && concaveTurns >= 2) return build(ShapeType.Cloud);
 
   const edgeDistance = points.map((point) => Math.min(Math.abs(point.x - x), Math.abs(point.x - (x + width)), Math.abs(point.y - y), Math.abs(point.y - (y + height))));

@@ -31,6 +31,28 @@ const LONG_PRESS_MS = 350;
 const MOVE_TOLERANCE = 6;
 
 const MAX_LAYERS = 100;
+const ERASER_RADIUS = 14;
+
+const distanceToSegment = (point: Point, start: Point, end: Point) => {
+    const dx = end.x - start.x;
+    const dy = end.y - start.y;
+    if (dx === 0 && dy === 0) return Math.hypot(point.x - start.x, point.y - start.y);
+    const t = Math.max(0, Math.min(1, ((point.x - start.x) * dx + (point.y - start.y) * dy) / (dx * dx + dy * dy)));
+    return Math.hypot(point.x - (start.x + t * dx), point.y - (start.y + t * dy));
+};
+
+const CONNECTABLE_SHAPES = new Set<ShapeType>([
+    ShapeType.Rectangle, ShapeType.Ellipse, ShapeType.Diamond, ShapeType.Triangle,
+    ShapeType.Star, ShapeType.Capsule, ShapeType.Parallelogram, ShapeType.Hexagon,
+    ShapeType.Pentagon, ShapeType.Document, ShapeType.Code,
+]);
+
+const isConnectableLayer = (layer: any) => {
+    if (!layer) return false;
+    const type = layer.get("type");
+    if (type === LayerType.Image || type === LayerType.Rectangle || type === LayerType.Ellipse) return true;
+    return type === LayerType.Shape && CONNECTABLE_SHAPES.has(layer.get("shape"));
+};
 
 type SelectionFrame = {
     ids: string[];
@@ -38,6 +60,17 @@ type SelectionFrame = {
     rotation: number;
     translation: Point;
 };
+
+type RotationOrigin = XYWH & {
+    rotation: number;
+    oneDimensional: boolean;
+    connector: boolean;
+};
+
+const isOneDimensionalShape = (layer: any) =>
+    layer.get("type") === LayerType.Shape && [
+        ShapeType.Line, ShapeType.Arrow, ShapeType.ArrowLeftLine, ShapeType.ArrowBidirectionalLine,
+    ].includes(layer.get("shape"));
 
 const rotatePointAround = (px: number, py: number, cx: number, cy: number, angleDeg: number): Point => {
     const radians = angleDeg * Math.PI / 180;
@@ -93,12 +126,49 @@ const closestSide = (from: XYWH & { rotation?: number }, to: XYWH & { rotation?:
     const dy = localTarget.y - fromCenter.y;
     return Math.abs(dx) >= Math.abs(dy) ? (dx >= 0 ? Side.Right : Side.Left) : (dy >= 0 ? Side.Bottom : Side.Top);
 };
-const connectionPoint = (layer: XYWH & { rotation?: number }, side: Side) => {
+const outlineVertices = (shape: ShapeType | undefined, x: number, y: number, width: number, height: number): Point[] | null => {
+    const cx = x + width / 2;
+    const cy = y + height / 2;
+    switch (shape) {
+        case ShapeType.Diamond: return [{ x: cx, y }, { x: x + width, y: cy }, { x: cx, y: y + height }, { x, y: cy }];
+        case ShapeType.Triangle: return [{ x: cx, y }, { x: x + width, y: y + height }, { x, y: y + height }];
+        case ShapeType.Star: return [
+            { x: cx, y }, { x: x + width * .62, y: y + height * .38 }, { x: x + width, y: y + height * .38 }, { x: x + width * .7, y: y + height * .62 }, { x: x + width * .82, y: y + height },
+            { x: cx, y: y + height * .75 }, { x: x + width * .18, y: y + height }, { x: x + width * .3, y: y + height * .62 }, { x, y: y + height * .38 }, { x: x + width * .38, y: y + height * .38 },
+        ];
+        case ShapeType.Parallelogram: return [{ x: x + width * .2, y }, { x: x + width, y }, { x: x + width * .8, y: y + height }, { x, y: y + height }];
+        case ShapeType.Pentagon: return [{ x: cx, y }, { x: x + width, y: y + height * .38 }, { x: x + width * .81, y: y + height }, { x: x + width * .19, y: y + height }, { x, y: y + height * .38 }];
+        case ShapeType.Hexagon: return [{ x: x + width * .25, y }, { x: x + width * .75, y }, { x: x + width, y: cy }, { x: x + width * .75, y: y + height }, { x: x + width * .25, y: y + height }, { x, y: cy }];
+        case ShapeType.Document: return [{ x, y }, { x: x + width * .68, y }, { x: x + width, y: y + height * .3 }, { x: x + width, y: y + height }, { x, y: y + height }];
+        default: return null;
+    }
+};
+
+const connectionPoint = (layer: XYWH & { rotation?: number; shape?: ShapeType }, side: Side) => {
     const center = { x: layer.x + layer.width / 2, y: layer.y + layer.height / 2 };
-    const localPoint = side === Side.Left ? { x: layer.x, y: center.y }
+    const direction = side === Side.Left ? { x: -1, y: 0 } : side === Side.Right ? { x: 1, y: 0 } : side === Side.Top ? { x: 0, y: -1 } : { x: 0, y: 1 };
+    const vertices = outlineVertices(layer.shape, layer.x, layer.y, layer.width, layer.height);
+    let localPoint = side === Side.Left ? { x: layer.x, y: center.y }
         : side === Side.Right ? { x: layer.x + layer.width, y: center.y }
             : side === Side.Top ? { x: center.x, y: layer.y }
                 : { x: center.x, y: layer.y + layer.height };
+    if (vertices) {
+        let nearestDistance = Number.POSITIVE_INFINITY;
+        for (let index = 0; index < vertices.length; index++) {
+            const start = vertices[index];
+            const end = vertices[(index + 1) % vertices.length];
+            const edge = { x: end.x - start.x, y: end.y - start.y };
+            const determinant = direction.x * edge.y - direction.y * edge.x;
+            if (Math.abs(determinant) < 0.0001) continue;
+            const fromCenter = { x: start.x - center.x, y: start.y - center.y };
+            const rayDistance = (fromCenter.x * edge.y - fromCenter.y * edge.x) / determinant;
+            const edgeDistance = (fromCenter.x * direction.y - fromCenter.y * direction.x) / determinant;
+            if (rayDistance >= 0 && edgeDistance >= 0 && edgeDistance <= 1 && rayDistance < nearestDistance) {
+                nearestDistance = rayDistance;
+                localPoint = { x: center.x + direction.x * rayDistance, y: center.y + direction.y * rayDistance };
+            }
+        }
+    }
     return rotatePointAround(localPoint.x, localPoint.y, center.x, center.y, layer.rotation ?? 0);
 };
 
@@ -110,10 +180,9 @@ const syncBoundArrows = (layers: any, ids: readonly string[]) => {
         const start = layers.get(arrow.get("startLayerId"));
         const end = layers.get(arrow.get("endLayerId"));
         if (!start || !end) return;
-        const startBounds = { x: start.get("x"), y: start.get("y"), width: start.get("width"), height: start.get("height"), rotation: start.get("rotation") ?? 0 };
-        const endBounds = { x: end.get("x"), y: end.get("y"), width: end.get("width"), height: end.get("height"), rotation: end.get("rotation") ?? 0 };
-        // Default connectors follow the nearest facing borders as shapes move. A side is fixed
-        // only after the user chooses it from the connector controls.
+        const startBounds = { x: start.get("x"), y: start.get("y"), width: start.get("width"), height: start.get("height"), rotation: start.get("rotation") ?? 0, shape: start.get("shape") };
+        const endBounds = { x: end.get("x"), y: end.get("y"), width: end.get("width"), height: end.get("height"), rotation: end.get("rotation") ?? 0, shape: end.get("shape") };
+        // Connectors follow the nearest facing borders as their shapes move.
         const startSide = arrow.get("startSideLocked")
             ? (arrow.get("startSide") ?? closestSide(startBounds, endBounds))
             : closestSide(startBounds, endBounds);
@@ -139,8 +208,9 @@ export const Canvas = ({ boardId }: CanvasProps) => {
     const activePointers = useRef<Map<number, Point>>(new Map());
     const lastPanCenter = useRef<Point | null>(null);
     const resizeOrigins = useRef<Map<string, XYWH>>(new Map());
-    const rotateOrigins = useRef<Map<string, XYWH & { rotation: number }>>(new Map());
+    const rotateOrigins = useRef<Map<string, RotationOrigin>>(new Map());
     const activeSelectionFrame = useRef<SelectionFrame | null>(null);
+    const erasedLayerIds = useRef<Set<string>>(new Set());
 
 
     const layerIds = useStorage((root) => root.layerIds);
@@ -537,13 +607,16 @@ export const Canvas = ({ boardId }: CanvasProps) => {
             const id = nanoid();
 
             const isCode = shape === ShapeType.Code;
+            const isOneDimensional = [ShapeType.Line, ShapeType.Arrow, ShapeType.ArrowLeftLine, ShapeType.ArrowBidirectionalLine].includes(shape);
             const layer = new LiveObject<ShapeLayer>({
                 type: LayerType.Shape,
                 shape,
                 x: position.x,
                 y: position.y,
                 width: isCode ? 560 : 120,
-                height: isCode ? 260 : 80,
+                // Lines have no invisible height: this keeps their handles and
+                // rotation pivot on the visible stroke.
+                height: isCode ? 260 : isOneDimensional ? 0 : 80,
                 fill: isCode ? undefined : undefined,
                 stroke: isCode ? undefined : BLACK,
                 strokeWidth: isCode ? undefined : 2,
@@ -673,16 +746,33 @@ export const Canvas = ({ boardId }: CanvasProps) => {
         })
     }, [lastUsedColor])
 
-    const eraseLayer = useMutation(({ storage, setMyPresence }, layerId: string) => {
+    const erasePathsNear = useMutation(({ storage, setMyPresence }, point: Point) => {
         const layers = storage.get("layers");
         const ids = storage.get("layerIds");
-        const layer = layers.get(layerId);
-        if (!layer || layer.get("type") !== LayerType.Path) return;
-        const index = ids.toImmutable().indexOf(layerId);
-        if (index === -1) return;
-        layers.delete(layerId);
-        ids.delete(index);
-        setMyPresence({ selection: [] }, { addToHistory: true });
+        const idsToRemove: string[] = [];
+        ids.toImmutable().forEach((id) => {
+            if (erasedLayerIds.current.has(id)) return;
+            const layer = layers.get(id) as any;
+            if (!layer || layer.get("type") !== LayerType.Path) return;
+            const points = layer.get("points") as number[][];
+            const origin = { x: layer.get("x") as number, y: layer.get("y") as number };
+            const radius = ERASER_RADIUS + Math.min(8, ((layer.get("strokeWidth") as number | undefined) ?? 8) / 2);
+            const closeEnough = points.some((current, index) => {
+                const currentPoint = { x: origin.x + current[0], y: origin.y + current[1] };
+                if (index === 0) return Math.hypot(point.x - currentPoint.x, point.y - currentPoint.y) <= radius;
+                const previous = points[index - 1];
+                return distanceToSegment(point, { x: origin.x + previous[0], y: origin.y + previous[1] }, currentPoint) <= radius;
+            });
+            if (closeEnough) idsToRemove.push(id);
+        });
+        idsToRemove.forEach((id) => {
+            const index = ids.toImmutable().indexOf(id);
+            if (index === -1) return;
+            layers.delete(id);
+            ids.delete(index);
+            erasedLayerIds.current.add(id);
+        });
+        if (idsToRemove.length) setMyPresence({ selection: [] });
     }, []);
 
     const beginSelectionDrag = useCallback((e: React.PointerEvent) => {
@@ -747,11 +837,18 @@ export const Canvas = ({ boardId }: CanvasProps) => {
             rotateOrigins.current.forEach((original, id) => {
                 const layer = layers.get(id);
                 if (!layer) return;
-                const originalCenter = { x: original.x + original.width / 2, y: original.y + original.height / 2 };
+                const originalCenter = {
+                    x: original.x + original.width / 2,
+                    y: original.oneDimensional
+                        ? original.y + (original.connector ? original.height / 2 : 0)
+                        : original.y + original.height / 2,
+                };
                 const nextCenter = rotatePointAround(originalCenter.x, originalCenter.y, canvasState.center.x, canvasState.center.y, delta);
                 layer.update({
                     x: nextCenter.x - original.width / 2,
-                    y: nextCenter.y - original.height / 2,
+                    y: original.oneDimensional
+                        ? nextCenter.y - (original.connector ? original.height / 2 : 0)
+                        : nextCenter.y - original.height / 2,
                     rotation: original.rotation + delta,
                 });
             });
@@ -782,10 +879,18 @@ export const Canvas = ({ boardId }: CanvasProps) => {
             const startAngle =
                 Math.atan2(point.y - center.y, point.x - center.x) * (180 / Math.PI);
 
-            const origins = new Map<string, XYWH & { rotation: number }>();
+            const origins = new Map<string, RotationOrigin>();
             self.presence.selection.forEach((id) => {
                 const layer = storage.get("layers").get(id) as any;
-                if (layer) origins.set(id, { x: layer.get("x"), y: layer.get("y"), width: layer.get("width"), height: layer.get("height"), rotation: layer.get("rotation") ?? 0 });
+                if (layer) {
+                    const oneDimensional = isOneDimensionalShape(layer);
+                    origins.set(id, {
+                        x: layer.get("x"), y: layer.get("y"), width: layer.get("width"), height: layer.get("height"),
+                        rotation: layer.get("rotation") ?? 0,
+                        oneDimensional,
+                        connector: oneDimensional && layer.get("shape") === ShapeType.Arrow && Boolean(layer.get("startLayerId") || layer.get("endLayerId")),
+                    });
+                }
             });
             rotateOrigins.current = origins;
 
@@ -866,6 +971,13 @@ export const Canvas = ({ boardId }: CanvasProps) => {
         if (canvasState.mode === CanvasMode.Pencil) {
             e.preventDefault();
             continueDrawing(current, e);
+            setMyPresence({ cursor: current });
+            return;
+        }
+
+        if (canvasState.mode === CanvasMode.Erasing && e.buttons === 1) {
+            e.preventDefault();
+            erasePathsNear(current);
             setMyPresence({ cursor: current });
             return;
         }
@@ -971,6 +1083,9 @@ export const Canvas = ({ boardId }: CanvasProps) => {
         }
 
         if (canvasState.mode === CanvasMode.Erasing) {
+            history.pause();
+            erasedLayerIds.current.clear();
+            erasePathsNear(point);
             return;
         }
 
@@ -1027,6 +1142,7 @@ export const Canvas = ({ boardId }: CanvasProps) => {
         }
         else if (canvasState.mode === CanvasMode.Erasing) {
             // Keep the eraser selected after either an erased path or an empty-canvas click.
+            erasedLayerIds.current.clear();
         }
         else if (canvasState.mode === CanvasMode.Connecting) {
             // Connector mode stays active until the user presses Escape or picks another tool.
@@ -1091,7 +1207,12 @@ export const Canvas = ({ boardId }: CanvasProps) => {
         ({ storage, self, setMyPresence }, e: React.PointerEvent, layerId: string) => {
             if (canvasState.mode === CanvasMode.Erasing) {
                 e.stopPropagation();
-                eraseLayer(layerId);
+                const point = pointerEventToCanvasPoint(e, camera);
+                if (point) {
+                    history.pause();
+                    erasedLayerIds.current.clear();
+                    erasePathsNear(point);
+                }
                 return;
             }
 
@@ -1112,7 +1233,7 @@ export const Canvas = ({ boardId }: CanvasProps) => {
 
             if (canvasState.mode === CanvasMode.Connecting) {
                 const target = storage.get("layers").get(layerId) as any;
-                const connectable = target && [LayerType.Shape, LayerType.Rectangle, LayerType.Ellipse].includes(target.get("type"));
+                const connectable = isConnectableLayer(target);
                 if (!connectable) return;
                 if (!canvasState.sourceId) {
                     setCanvasState({ mode: CanvasMode.Connecting, sourceId: layerId });
@@ -1121,9 +1242,9 @@ export const Canvas = ({ boardId }: CanvasProps) => {
                 }
                 if (canvasState.sourceId === layerId) return;
                 const source = storage.get("layers").get(canvasState.sourceId) as any;
-                if (!source) return;
-                const sourceBounds = { x: source.get("x"), y: source.get("y"), width: source.get("width"), height: source.get("height"), rotation: source.get("rotation") ?? 0 };
-                const targetBounds = { x: target.get("x"), y: target.get("y"), width: target.get("width"), height: target.get("height"), rotation: target.get("rotation") ?? 0 };
+                if (!source || !isConnectableLayer(source)) return;
+                const sourceBounds = { x: source.get("x"), y: source.get("y"), width: source.get("width"), height: source.get("height"), rotation: source.get("rotation") ?? 0, shape: source.get("shape") };
+                const targetBounds = { x: target.get("x"), y: target.get("y"), width: target.get("width"), height: target.get("height"), rotation: target.get("rotation") ?? 0, shape: target.get("shape") };
                 const startSide = closestSide(sourceBounds, targetBounds);
                 const endSide = closestSide(targetBounds, sourceBounds);
                 const startPoint = connectionPoint(sourceBounds, startSide);
@@ -1132,7 +1253,7 @@ export const Canvas = ({ boardId }: CanvasProps) => {
                 storage.get("layerIds").push(id);
                 storage.get("layers").set(id, new LiveObject<ShapeLayer>({
                     type: LayerType.Shape, shape: ShapeType.Arrow, x: startPoint.x, y: startPoint.y,
-                    width: endPoint.x - startPoint.x, height: endPoint.y - startPoint.y, fill: undefined, stroke: BLACK,
+                    width: endPoint.x - startPoint.x, height: endPoint.y - startPoint.y, fill: undefined, stroke: resolveColor(lastUsedColor),
                     strokeWidth: 2, startLayerId: canvasState.sourceId, endLayerId: layerId, startSide, endSide,
                     startSideLocked: false, endSideLocked: false,
                 }));
@@ -1155,7 +1276,8 @@ export const Canvas = ({ boardId }: CanvasProps) => {
             camera,
             history,
             canvasState,
-            eraseLayer,
+            erasePathsNear,
+            lastUsedColor,
         ]
     );
 

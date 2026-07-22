@@ -20,7 +20,6 @@ import {
   Minus,
   ArrowRight,
   ArrowLeft,
-  ArrowLeftRight,
   MoveHorizontal,
   Code2,
   Diamond,
@@ -32,7 +31,7 @@ import {
   Hexagon,
   MessageSquare,
   FileText,
-  Database,
+
   Box,
   Pyramid,
   Cone,
@@ -49,7 +48,7 @@ import {
   ShapeType,
 } from "@/types/canvas";
 import { useRef, useState, useEffect } from "react";
-import { CylinderIcon, ParallelogramIcon } from "./shape.icons";
+import { BlockArrowBidirectionalIcon, BlockArrowLeftIcon, BlockArrowRightIcon, CylinderIcon, ParallelogramIcon, PentagonIcon } from "./shape.icons";
 import { useImageUpload } from "@/hooks/use-image-upload";
 
 interface ToolbarProps {
@@ -193,39 +192,43 @@ export const Toolbar = ({
             {isShapeOpen && (
               <div
                 className="
-                absolute left-full ml-2 top-0
+                absolute left-full ml-4 -top-12
                 bg-white rounded-md shadow-lg
                 p-2 z-50
                 grid grid-cols-4 gap-1
                 w-[216px]
               "
               >
-                <ToolButton label="Rectangle" icon={Square} onClick={() => insertShape(ShapeType.Rectangle)} />
-                <ToolButton label="Ellipse" icon={Circle} onClick={() => insertShape(ShapeType.Ellipse)} />
+
+                <div className="col-span-4 border-t border-neutral-100 px-1 pt-2 text-[10px] font-semibold uppercase tracking-wider text-neutral-400">1D shapes</div>
                 <ToolButton label="Line" icon={Minus} onClick={() => insertShape(ShapeType.Line)} />
                 <ToolButton label="Right arrow" icon={ArrowRight} onClick={() => insertShape(ShapeType.Arrow)} />
                 <ToolButton label="Left arrow" icon={ArrowLeft} onClick={() => insertShape(ShapeType.ArrowLeftLine)} />
                 <ToolButton label="Double-sided arrow" icon={MoveHorizontal} onClick={() => insertShape(ShapeType.ArrowBidirectionalLine)} />
-                <ToolButton label="Right block arrow" icon={ArrowRight} onClick={() => insertShape(ShapeType.ArrowRight)} />
-                <ToolButton label="Left block arrow" icon={ArrowLeft} onClick={() => insertShape(ShapeType.ArrowLeft)} />
-                <ToolButton label="Double-sided block arrow" icon={ArrowLeftRight} onClick={() => insertShape(ShapeType.ArrowBidirectional)} />
+
+                <div className="col-span-4 border-t border-neutral-100 px-1 pt-2 text-[10px] font-semibold uppercase tracking-wider text-neutral-400">2D shapes</div>
+                <ToolButton label="Rectangle" icon={Square} onClick={() => insertShape(ShapeType.Rectangle)} />
+                <ToolButton label="Ellipse" icon={Circle} onClick={() => insertShape(ShapeType.Ellipse)} />
+                <ToolButton label="Right block arrow" icon={BlockArrowRightIcon} onClick={() => insertShape(ShapeType.ArrowRight)} />
+                <ToolButton label="Left block arrow" icon={BlockArrowLeftIcon} onClick={() => insertShape(ShapeType.ArrowLeft)} />
+                <ToolButton label="Double-sided block arrow" icon={BlockArrowBidirectionalIcon} onClick={() => insertShape(ShapeType.ArrowBidirectional)} />
                 <ToolButton label="Diamond" icon={Diamond} onClick={() => insertShape(ShapeType.Diamond)} />
                 <ToolButton label="Triangle" icon={Triangle} onClick={() => insertShape(ShapeType.Triangle)} />
                 <ToolButton label="Star" icon={Star} onClick={() => insertShape(ShapeType.Star)} />
                 <ToolButton label="Capsule" icon={Pill} onClick={() => insertShape(ShapeType.Capsule)} />
                 <ToolButton label="Parallelogram" icon={ParallelogramIcon} onClick={() => insertShape(ShapeType.Parallelogram)} />
-                <ToolButton label="Cylinder" icon={CylinderIcon} onClick={() => insertShape(ShapeType.Cylinder)} />
                 <ToolButton label="Cloud" icon={Cloud} onClick={() => insertShape(ShapeType.Cloud)} />
-                <ToolButton label="Pentagon" icon={Shapes} onClick={() => insertShape(ShapeType.Pentagon)} />
+                <ToolButton label="Pentagon" icon={PentagonIcon} onClick={() => insertShape(ShapeType.Pentagon)} />
                 <ToolButton label="Hexagon" icon={Hexagon} onClick={() => insertShape(ShapeType.Hexagon)} />
                 <ToolButton label="Heart" icon={Heart} onClick={() => insertShape(ShapeType.Heart)} />
                 <ToolButton label="Speech bubble" icon={MessageSquare} onClick={() => insertShape(ShapeType.SpeechBubble)} />
                 <ToolButton label="Document" icon={FileText} onClick={() => insertShape(ShapeType.Document)} />
-                <ToolButton label="Database" icon={Database} onClick={() => insertShape(ShapeType.Database)} />
+                <ToolButton label="Code" icon={Code2} showHint={false} onClick={() => insertShape(ShapeType.Code)} />
+                <div className="col-span-4 border-t border-neutral-100 px-1 pt-2 text-[10px] font-semibold uppercase tracking-wider text-neutral-400">3D shapes</div>
+                <ToolButton label="Cylinder" icon={CylinderIcon} onClick={() => insertShape(ShapeType.Cylinder)} />
                 <ToolButton label="Cube" icon={Box} onClick={() => insertShape(ShapeType.Cube)} />
                 <ToolButton label="Pyramid" icon={Pyramid} onClick={() => insertShape(ShapeType.Pyramid)} />
                 <ToolButton label="Cone" icon={Cone} onClick={() => insertShape(ShapeType.Cone)} />
-                <ToolButton label="Code" icon={Code2} showHint={false} onClick={() => insertShape(ShapeType.Code)} />
               </div>
             )}
           </div>
@@ -267,34 +270,34 @@ export const Toolbar = ({
             <button aria-label="Erase pencil strokes" onClick={() => setCanvasState({ mode: CanvasMode.Erasing })} className={`flex h-9 w-9 items-center justify-center rounded-lg transition ${canvasState.mode === CanvasMode.Erasing ? "bg-[#FFF1BF] text-[#5b4713] shadow-sm" : "text-neutral-600 hover:bg-white"}`}><Eraser className="h-[18px] w-[18px]" /></button>
           </div>
           {canvasState.mode === CanvasMode.Pencil && <>
-          <div className="min-w-32">
-            <div className="mb-1 flex items-center justify-between text-[11px] font-medium text-neutral-500">
-              <span>Stroke</span><span>{penSize}px</span>
+            <div className="min-w-32">
+              <div className="mb-1 flex items-center justify-between text-[11px] font-medium text-neutral-500">
+                <span>Stroke</span><span>{penSize}px</span>
+              </div>
+              <input
+                aria-label="Pen thickness"
+                type="range"
+                min="2"
+                max="24"
+                value={penSize}
+                onChange={(event) => setPenSize(Number(event.target.value))}
+                className="h-1.5 w-36 cursor-pointer accent-neutral-900"
+              />
             </div>
-            <input
-              aria-label="Pen thickness"
-              type="range"
-              min="2"
-              max="24"
-              value={penSize}
-              onChange={(event) => setPenSize(Number(event.target.value))}
-              className="h-1.5 w-36 cursor-pointer accent-neutral-900"
-            />
-          </div>
-          <label className="relative flex h-9 w-9 cursor-pointer items-center justify-center overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-sm" title="Pen color">
-            <span className="h-5 w-5 rounded-lg border border-black/10" style={{ backgroundColor: `rgb(${penColor.r}, ${penColor.g}, ${penColor.b})` }} />
-            <input
-              aria-label="Pen color"
-              type="color"
-              value={`#${[penColor.r, penColor.g, penColor.b].map((value) => value.toString(16).padStart(2, "0")).join("")}`}
-              onChange={(event) => {
-                const hex = event.target.value;
-                setPenColor({ r: parseInt(hex.slice(1, 3), 16), g: parseInt(hex.slice(3, 5), 16), b: parseInt(hex.slice(5, 7), 16) });
-              }}
-              className="absolute inset-0 cursor-pointer opacity-0"
-            />
-          </label>
-          <button onClick={() => setSmartDrawing(!smartDrawing)} className={`flex h-9 items-center gap-1.5 rounded-xl px-2.5 text-xs font-medium transition ${smartDrawing ? "bg-[#FFF1BF] text-[#5b4713]" : "bg-[#FFF8E7] text-neutral-600 hover:bg-[#FFF1BF]"}`} title="Turn rough closed shapes into clean shapes"><WandSparkles className="h-4 w-4" />Smart shapes</button>
+            <label className="relative flex h-9 w-9 cursor-pointer items-center justify-center overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-sm" title="Pen color">
+              <span className="h-5 w-5 rounded-lg border border-black/10" style={{ backgroundColor: `rgb(${penColor.r}, ${penColor.g}, ${penColor.b})` }} />
+              <input
+                aria-label="Pen color"
+                type="color"
+                value={`#${[penColor.r, penColor.g, penColor.b].map((value) => value.toString(16).padStart(2, "0")).join("")}`}
+                onChange={(event) => {
+                  const hex = event.target.value;
+                  setPenColor({ r: parseInt(hex.slice(1, 3), 16), g: parseInt(hex.slice(3, 5), 16), b: parseInt(hex.slice(5, 7), 16) });
+                }}
+                className="absolute inset-0 cursor-pointer opacity-0"
+              />
+            </label>
+            <button onClick={() => setSmartDrawing(!smartDrawing)} className={`flex h-9 items-center gap-1.5 rounded-xl px-2.5 text-xs font-medium transition ${smartDrawing ? "bg-[#FFF1BF] text-[#5b4713]" : "bg-[#FFF8E7] text-neutral-600 hover:bg-[#FFF1BF]"}`} title="Turn rough closed shapes into clean shapes"><WandSparkles className="h-4 w-4" />Smart shapes</button>
           </>}
           {canvasState.mode === CanvasMode.Erasing && <p className="px-2 text-sm font-medium text-neutral-600">Sweep over pencil strokes to erase</p>}
         </div>

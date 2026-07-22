@@ -3,7 +3,6 @@
 
 import { ShapeLayer, ShapeType, Color } from "@/types/canvas";
 import { ColorToCSS } from "@/lib/utils";
-import ContentEditable, { ContentEditableEvent } from "react-contenteditable";
 import { useMutation } from "@liveblocks/react";
 import { ReactNode, useEffect, useRef, useState } from "react";
 
@@ -16,8 +15,24 @@ interface ShapeRendererProps {
 
 const BLACK = "#000000";
 
+const TEXT_SHAPES = new Set<ShapeType>([
+  ShapeType.Rectangle, ShapeType.Ellipse, ShapeType.Diamond, ShapeType.Triangle,
+  ShapeType.Star, ShapeType.Capsule, ShapeType.Parallelogram, ShapeType.Cloud,
+  ShapeType.Pentagon, ShapeType.Hexagon, ShapeType.Heart, ShapeType.SpeechBubble,
+  ShapeType.Document, ShapeType.ArrowRight, ShapeType.ArrowLeft,
+  ShapeType.ArrowBidirectional,
+]);
+
 const isTransparentColor = (c?: Color) =>
   !c || (c.r === -1 && c.g === -1 && c.b === -1);
+
+const shadeColor = (color: Color | undefined, amount: number) => {
+  if (isTransparentColor(color)) return "transparent";
+  const shade = (channel: number) => Math.round(amount >= 0
+    ? channel + (255 - channel) * amount
+    : channel * (1 + amount));
+  return ColorToCSS({ r: shade(color!.r), g: shade(color!.g), b: shade(color!.b) });
+};
 
 type RoutePoint = { x: number; y: number };
 
@@ -30,15 +45,6 @@ const plainCode = (value?: string) => (value ?? "")
   .replace(/&amp;/g, "&")
   .replace(/&lt;/g, "<")
   .replace(/&gt;/g, ">");
-
-const editableHtml = (value?: string) => plainCode(value)
-  .replace(/&/g, "&amp;")
-  .replace(/</g, "&lt;")
-  .replace(/>/g, "&gt;")
-  .replace(/\n/g, "<br />");
-
-const textFromEditor = (event: ContentEditableEvent) =>
-  ((event.target as unknown as HTMLElement).innerText || "").replace(/\u00a0/g, " ");
 
 const arrowHead = (tip: RoutePoint, angle: number, length = 12) => {
   const first = { x: tip.x - length * Math.cos(angle - Math.PI / 6), y: tip.y - length * Math.sin(angle - Math.PI / 6) };
@@ -89,6 +95,54 @@ const roundedOrthogonalPath = (rawPoints: RoutePoint[]) => {
   return `${path} L ${end.x} ${end.y}`;
 };
 
+/** The visible centre of several shapes is not the centre of their selection box. */
+const shapeTextBounds = (shape: ShapeType, x: number, y: number, width: number, height: number) => {
+  const inset = 12;
+  const standard = { x: x + inset, y: y + inset, width: Math.max(0, width - inset * 2), height: Math.max(0, height - inset * 2) };
+  switch (shape) {
+    case ShapeType.Triangle:
+      return { ...standard, y: y + height * 0.34, height: Math.max(0, height * 0.5) };
+    case ShapeType.SpeechBubble:
+      return { ...standard, y: y + height * 0.12, height: Math.max(0, height * 0.56) };
+    case ShapeType.Document:
+      return { ...standard, y: y + height * 0.16, height: Math.max(0, height * 0.64) };
+    case ShapeType.Heart:
+      return { ...standard, y: y + height * 0.3, height: Math.max(0, height * 0.42) };
+    case ShapeType.ArrowRight:
+    case ShapeType.ArrowLeft:
+    case ShapeType.ArrowBidirectional:
+      return { ...standard, y: y + height * 0.28, height: Math.max(0, height * 0.44) };
+    default:
+      return standard;
+  }
+};
+
+/** Place a connector label on its route rather than the bounding-box centre. */
+const connectorLabelCenter = (layer: ShapeLayer) => {
+  const start = { x: layer.x, y: layer.y };
+  const end = { x: layer.x + layer.width, y: layer.y + layer.height };
+  const inferredStartSide = Math.abs(end.x - start.x) >= Math.abs(end.y - start.y)
+    ? (end.x >= start.x ? 8 : 4)
+    : (end.y >= start.y ? 2 : 1);
+  const inferredEndSide = inferredStartSide === 4 ? 8 : inferredStartSide === 8 ? 4 : inferredStartSide === 1 ? 2 : 1;
+  const direction = (side: number) => side === 4 ? { x: -1, y: 0 } : side === 8 ? { x: 1, y: 0 } : side === 1 ? { x: 0, y: -1 } : { x: 0, y: 1 };
+  const startDirection = direction(layer.startSide ?? inferredStartSide);
+  const endDirection = direction(layer.endSide ?? inferredEndSide);
+  const stub = Math.min(16, Math.max(8, Math.hypot(end.x - start.x, end.y - start.y) * 0.1));
+  const startStub = { x: start.x + startDirection.x * stub, y: start.y + startDirection.y * stub };
+  const endStub = { x: end.x + endDirection.x * stub, y: end.y + endDirection.y * stub };
+  const startHorizontal = startDirection.x !== 0;
+  const endHorizontal = endDirection.x !== 0;
+  if (startHorizontal === endHorizontal) {
+    return startHorizontal
+      ? { x: (startStub.x + endStub.x) / 2, y: (startStub.y + endStub.y) / 2 }
+      : { x: (startStub.x + endStub.x) / 2, y: (startStub.y + endStub.y) / 2 };
+  }
+  return startHorizontal
+    ? { x: endStub.x, y: startStub.y }
+    : { x: startStub.x, y: endStub.y };
+};
+
 export const ShapeRenderer = ({
   id,
   layer,
@@ -110,7 +164,8 @@ export const ShapeRenderer = ({
   } = layer;
   const [isEditing, setIsEditing] = useState(false);
   const [codeDraft, setCodeDraft] = useState("");
-  const textRef = useRef<HTMLElement>(null);
+  const [textDraft, setTextDraft] = useState("");
+  const textRef = useRef<HTMLTextAreaElement>(null);
 
   const updateValue = useMutation(({ storage }, value: string) => {
     storage.get("layers").get(id)?.set("value", value);
@@ -122,6 +177,13 @@ export const ShapeRenderer = ({
 
   const cx = x + width / 2;
   const cy = y + height / 2;
+  const isOneDimensional = [ShapeType.Line, ShapeType.Arrow, ShapeType.ArrowLeftLine, ShapeType.ArrowBidirectionalLine].includes(shape);
+  const isConnector = shape === ShapeType.Arrow && Boolean(layer.startLayerId || layer.endLayerId);
+  // Connectors can carry a label even though regular one-dimensional arrows cannot.
+  const supportsShapeText = TEXT_SHAPES.has(shape) || isConnector;
+  const shapeCenterY = isOneDimensional
+    ? (isConnector ? y + height / 2 : y)
+    : cy;
 
   
 
@@ -149,19 +211,40 @@ export const ShapeRenderer = ({
   const finalStrokeWidth = Math.max(strokeWidth, 1);
   const isCodeShape = shape === ShapeType.Code;
   const codeValue = plainCode(layer.value);
+  const labelText = plainCode(layer.value);
+  const hasConnectorLabel = isConnector && labelText.trim().length > 0;
+  const labelCenter = isConnector ? connectorLabelCenter(layer) : { x: x + width / 2, y: y + height / 2 };
+  const connectorLabelWidth = Math.min(
+    Math.max(28, Math.max(Math.abs(width), Math.abs(height)) - 8),
+    Math.max(28, Math.min(220, labelText.split("\n").reduce((longest, line) => Math.max(longest, line.length), 0) * ((layer as any).fontSize ?? 14) * 0.55 + 8))
+  );
+  const labelBounds = isConnector
+    ? { x: labelCenter.x - connectorLabelWidth / 2, y: labelCenter.y - 11, width: connectorLabelWidth, height: 22 }
+    : shapeTextBounds(shape, x, y, width, height);
 
   
 
   const baseProps = {
     onPointerDown: (e: React.PointerEvent) => onPointerDown(e, id),
-    onDoubleClick: () => setIsEditing(true),
+    onDoubleClick: supportsShapeText ? () => {
+        setTextDraft(plainCode(layer.value));
+        setIsEditing(true);
+      } : undefined,
     fill: resolvedFill,
     stroke: resolvedStroke,
     strokeWidth: finalStrokeWidth,
     strokeDasharray: dashed ? "6 4" : undefined,
     vectorEffect: "non-scaling-stroke" as const,
-    pointerEvents: "all" as const,
+    pointerEvents: isOneDimensional ? "none" as const : "all" as const,
   };
+
+  const hitAreaProps = isOneDimensional ? {
+    ...baseProps,
+    fill: "none",
+    stroke: "transparent",
+    strokeWidth: Math.max(finalStrokeWidth, 18),
+    pointerEvents: "stroke" as const,
+  } : null;
 
   const selectionProps = selectionColor
     ? {
@@ -207,7 +290,6 @@ export const ShapeRenderer = ({
         const x1 = x;
         const y1 = y;
         const x2 = x + width;
-        const isConnector = Boolean(layer.startLayerId || layer.endLayerId);
         const y2 = isConnector ? y + height : y;
         const directAngle = Math.atan2(y2 - y1, x2 - x1);
         if (!isConnector) {
@@ -226,7 +308,7 @@ export const ShapeRenderer = ({
         const endDirection = direction(layer.endSide ?? inferredEndSide);
         const distance = Math.hypot(x2 - x1, y2 - y1);
         // Each connector visibly leaves the chosen border before it is allowed to turn.
-        const stub = Math.min(30, Math.max(14, distance * 0.18));
+        const stub = Math.min(16, Math.max(8, distance * 0.1));
         const startStub = { x: x1 + startDirection.x * stub, y: y1 + startDirection.y * stub };
         const endStub = { x: x2 + endDirection.x * stub, y: y2 + endDirection.y * stub };
         const startHorizontal = startDirection.x !== 0;
@@ -249,25 +331,36 @@ export const ShapeRenderer = ({
         const route = roundedOrthogonalPath([{ x: x1, y: y1 }, startStub, ...middle, endStub, { x: x2, y: y2 }]);
         const angle = Math.atan2(-endDirection.y, -endDirection.x);
 
-        const hx1 = x2 - headLength * Math.cos(angle - Math.PI / 6);
-        const hy1 = y2 - headLength * Math.sin(angle - Math.PI / 6);
-        const hx2 = x2 - headLength * Math.cos(angle + Math.PI / 6);
-        const hy2 = y2 - headLength * Math.sin(angle + Math.PI / 6);
+        const head = (tip: RoutePoint, headAngle: number) => {
+          const hx1 = tip.x - headLength * Math.cos(headAngle - Math.PI / 6);
+          const hy1 = tip.y - headLength * Math.sin(headAngle - Math.PI / 6);
+          const hx2 = tip.x - headLength * Math.cos(headAngle + Math.PI / 6);
+          const hy2 = tip.y - headLength * Math.sin(headAngle + Math.PI / 6);
+          return `M ${tip.x} ${tip.y} L ${hx1} ${hy1} M ${tip.x} ${tip.y} L ${hx2} ${hy2}`;
+        };
+        const arrowhead = layer.arrowhead ?? "right";
+        // A head at the source points back into the source border, opposite its exit stub.
+        const startAngle = Math.atan2(-startDirection.y, -startDirection.x);
+        const labelGapId = `connector-label-gap-${id}`;
+        const arrowheads = `${arrowhead !== "left" ? head({ x: x2, y: y2 }, angle) : ""} ${arrowhead !== "right" ? head({ x: x1, y: y1 }, startAngle) : ""}`;
 
         return (
-          <path
-            {...props}
-            fill="none"
-            stroke={props.stroke || BLACK}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            d={`${route}
-              M ${x2} ${y2}
-              L ${hx1} ${hy1}
-              M ${x2} ${y2}
-              L ${hx2} ${hy2}
-            `}
-          />
+          <>
+            {hasConnectorLabel && props.stroke !== "transparent" && <mask id={labelGapId} maskUnits="userSpaceOnUse" maskContentUnits="userSpaceOnUse" x={Math.min(x1, x2) - 80} y={Math.min(y1, y2) - 80} width={Math.abs(x2 - x1) + 160} height={Math.abs(y2 - y1) + 160}>
+              <rect x={Math.min(x1, x2) - 80} y={Math.min(y1, y2) - 80} width={Math.abs(x2 - x1) + 160} height={Math.abs(y2 - y1) + 160} fill="white" />
+              <rect x={labelBounds.x - 1} y={labelBounds.y - 1} width={labelBounds.width + 2} height={labelBounds.height + 2} rx={3} fill="black" />
+            </mask>}
+            <path
+              {...props}
+              fill="none"
+              stroke={props.stroke || BLACK}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              mask={hasConnectorLabel && props.stroke !== "transparent" ? `url(#${labelGapId})` : undefined}
+              d={route}
+            />
+            <path {...props} fill="none" stroke={props.stroke || BLACK} strokeLinecap="round" strokeLinejoin="round" d={arrowheads} />
+          </>
         );
       }
 
@@ -302,7 +395,8 @@ export const ShapeRenderer = ({
             height={height}
             pointerEvents="all"
             onPointerDown={(event) => onPointerDown(event, id)}
-            onDoubleClick={() => {
+            onDoubleClick={(event) => {
+              event.stopPropagation();
               setCodeDraft(codeValue);
               setIsEditing(true);
             }}
@@ -321,17 +415,22 @@ export const ShapeRenderer = ({
                 <span className="h-2.5 w-2.5 rounded-full bg-emerald-400" />
               </div>
               {isEditing ? (
-                <ContentEditable
-                  innerRef={textRef as never}
-                  html={editableHtml(codeDraft)}
-                  onChange={(event: ContentEditableEvent) => setCodeDraft(textFromEditor(event))}
-                  onBlur={() => {
-                    updateValue(codeDraft);
+                <textarea
+                  ref={textRef}
+                  value={codeDraft}
+                  onChange={(event) => {
+                    const value = event.target.value;
+                    setCodeDraft(value);
+                    updateValue(value);
+                  }}
+                  onBlur={(event) => {
+                    updateValue(event.target.value);
                     setIsEditing(false);
                   }}
                   onPointerDown={(event) => event.stopPropagation()}
                   onWheelCapture={(event) => event.stopPropagation()}
-                  className="min-h-0 w-full flex-1 overflow-auto whitespace-pre p-4 font-mono text-[13px] leading-6 text-slate-800 outline-none"
+                  spellCheck={false}
+                  className="min-h-0 w-full flex-1 resize-none overflow-auto whitespace-pre bg-transparent p-4 font-mono text-[13px] leading-6 text-slate-800 outline-none"
                 />
               ) : (
                 <pre onWheelCapture={(event) => event.stopPropagation()} className="m-0 min-h-0 flex-1 overflow-auto whitespace-pre p-4 font-mono text-[13px] leading-6 text-slate-800">
@@ -412,19 +511,16 @@ export const ShapeRenderer = ({
           />
         );
 
-      case ShapeType.Cylinder:
-        // One continuous silhouette avoids the stacked-ellipse look of the old cylinder.
+      case ShapeType.Cylinder: {
+        const rim = Math.min(height * 0.18, 18);
         return (
-          <path
-            {...props}
-            d={`M ${x} ${y + height * 0.16}
-              A ${width / 2} ${height * 0.16} 0 0 1 ${x + width} ${y + height * 0.16}
-              V ${y + height * 0.84}
-              A ${width / 2} ${height * 0.16} 0 0 1 ${x} ${y + height * 0.84} Z
-              M ${x} ${y + height * 0.16}
-              A ${width / 2} ${height * 0.16} 0 0 0 ${x + width} ${y + height * 0.16}`}
-          />
+          <g {...props}>
+            <path fill={shadeColor(fill, -0.02)} d={`M ${x} ${y + rim} A ${width / 2} ${rim} 0 0 1 ${x + width} ${y + rim} V ${y + height - rim} A ${width / 2} ${rim} 0 0 1 ${x} ${y + height - rim} Z`} />
+            <ellipse cx={cx} cy={y + rim} rx={width / 2} ry={rim} fill={shadeColor(fill, 0.03)} />
+            <path fill="none" d={`M ${x} ${y + rim} V ${y + height - rim} A ${width / 2} ${rim} 0 0 0 ${x + width} ${y + height - rim} V ${y + rim} M ${x} ${y + rim} A ${width / 2} ${rim} 0 0 0 ${x + width} ${y + rim}`} />
+          </g>
         );
+      }
 
       case ShapeType.Cloud:
         return (
@@ -451,14 +547,20 @@ export const ShapeRenderer = ({
         return <path {...props} d={`M ${x + width * 0.12} ${y} H ${x + width * 0.88} Q ${x + width} ${y} ${x + width} ${y + height * 0.16} V ${y + height * 0.63} Q ${x + width} ${y + height * 0.78} ${x + width * 0.85} ${y + height * 0.78} H ${x + width * 0.45} L ${x + width * 0.25} ${y + height} L ${x + width * 0.3} ${y + height * 0.78} H ${x + width * 0.12} Q ${x} ${y + height * 0.78} ${x} ${y + height * 0.63} V ${y + height * 0.16} Q ${x} ${y} ${x + width * 0.12} ${y} Z`} />;
       case ShapeType.Document:
         return <path {...props} d={`M ${x} ${y} H ${x + width * 0.68} L ${x + width} ${y + height * 0.3} V ${y + height} H ${x} Z M ${x + width * 0.68} ${y} V ${y + height * 0.3} H ${x + width}`} />;
-      case ShapeType.Database:
-        return <path {...props} d={`M ${x} ${y + height * 0.16} A ${width / 2} ${height * 0.16} 0 0 1 ${x + width} ${y + height * 0.16} V ${y + height * 0.84} A ${width / 2} ${height * 0.16} 0 0 1 ${x} ${y + height * 0.84} Z M ${x} ${cy} A ${width / 2} ${height * 0.16} 0 0 0 ${x + width} ${cy}`} />;
       case ShapeType.Cube:
-        return <path {...props} d={`M ${x + width * 0.28} ${y} L ${x + width} ${y + height * 0.2} V ${y + height * 0.76} L ${x + width * 0.7} ${y + height} L ${x} ${y + height * 0.8} V ${y + height * 0.23} Z M ${x} ${y + height * 0.23} L ${x + width * 0.7} ${y + height * 0.43} L ${x + width} ${y + height * 0.2} M ${x + width * 0.7} ${y + height * 0.43} V ${y + height}`} />;
+        return <g {...props}><polygon fill={shadeColor(fill, 0.03)} points={`${x + width * .3},${y} ${x + width},${y + height * .22} ${x + width * .7},${y + height * .45} ${x},${y + height * .23}`} /><polygon fill={shadeColor(fill, -0.02)} points={`${x},${y + height * .23} ${x + width * .7},${y + height * .45} ${x + width * .7},${y + height} ${x},${y + height * .78}`} /><polygon fill={shadeColor(fill, -0.04)} points={`${x + width * .7},${y + height * .45} ${x + width},${y + height * .22} ${x + width},${y + height * .77} ${x + width * .7},${y + height}`} /></g>;
       case ShapeType.Pyramid:
-        return <path {...props} d={`M ${cx} ${y} L ${x + width} ${y + height} H ${x} Z M ${cx} ${y} V ${y + height} M ${x} ${y + height} L ${x + width * 0.7} ${y + height * 0.72} L ${x + width} ${y + height}`} />;
-      case ShapeType.Cone:
-        return <path {...props} d={`M ${cx} ${y} L ${x + width} ${y + height * 0.82} A ${width / 2} ${height * 0.18} 0 0 1 ${x} ${y + height * 0.82} Z`} />;
+        return <g {...props}>
+          {/* Four faces projected as the conventional square-pyramid outline. */}
+          <polygon fill={shadeColor(fill, 0.03)} points={`${cx},${y} ${x},${y + height * .74} ${cx},${y + height * .59}`} />
+          <polygon fill={shadeColor(fill, -0.02)} points={`${cx},${y} ${cx},${y + height * .59} ${x + width},${y + height * .74}`} />
+          <polygon fill={shadeColor(fill, -0.04)} points={`${x},${y + height * .74} ${cx},${y + height} ${cx},${y + height * .59}`} />
+          <polygon fill={shadeColor(fill, -0.05)} points={`${cx},${y + height * .59} ${cx},${y + height} ${x + width},${y + height * .74}`} />
+        </g>;
+      case ShapeType.Cone: {
+        const rim = Math.min(height * .16, 16);
+        return <g {...props}><path fill={shadeColor(fill, -0.02)} d={`M ${cx} ${y} L ${x + width} ${y + height - rim} A ${width / 2} ${rim} 0 0 1 ${x} ${y + height - rim} Z`} /><ellipse cx={cx} cy={y + height - rim} rx={width / 2} ry={rim} fill={shadeColor(fill, -0.04)} /><path fill="none" d={`M ${cx} ${y} L ${x + width} ${y + height - rim} A ${width / 2} ${rim} 0 0 1 ${x} ${y + height - rim} Z`} /></g>;
+      }
 
       default:
         return null;
@@ -466,34 +568,45 @@ export const ShapeRenderer = ({
   };
 
   return (
-    <g transform={`rotate(${rotation} ${cx} ${cy})`} opacity={opacity}>
+    <g transform={`rotate(${rotation} ${cx} ${shapeCenterY})`} opacity={opacity}>
       {renderShape(baseProps)}
+      {hitAreaProps && renderShape(hitAreaProps)}
       {!isCodeShape && selectionProps && renderShape(selectionProps)}
-      {shape !== ShapeType.Line && shape !== ShapeType.Arrow && shape !== ShapeType.ArrowLeftLine && shape !== ShapeType.ArrowBidirectionalLine && !isCodeShape && layer.value && !isEditing && (
-        <foreignObject data-export-shape-text="true" x={x + 12} y={y + 12} width={Math.max(0, width - 24)} height={Math.max(0, height - 24)} pointerEvents="none" style={{ border: "none", outline: "none", overflow: "hidden" }}>
-          <div className="flex h-full w-full min-h-0 min-w-0 items-center justify-center overflow-auto whitespace-pre-wrap break-words text-center text-sm font-medium leading-5 text-neutral-900">
-            {plainCode(layer.value)}
+      {supportsShapeText && layer.value && !isEditing && (
+        <foreignObject data-export-shape-text="true" x={labelBounds.x} y={labelBounds.y} width={labelBounds.width} height={labelBounds.height} pointerEvents="none" style={{ border: "none", outline: "none", overflow: "hidden" }}>
+          <div className="grid h-full w-full min-h-0 min-w-0 content-center overflow-auto whitespace-pre-wrap break-words text-sm font-medium leading-5 text-neutral-900 [overflow-wrap:anywhere]" style={{ textAlign: (layer as any).textAlign ?? "center", fontFamily: (layer as any).fontFamily ?? "inherit", fontWeight: (layer as any).fontWeight === "bold" ? 700 : 500, fontSize: (layer as any).fontSize ?? 14 }}>
+            <span className="block w-full">{plainCode(layer.value)}</span>
           </div>
         </foreignObject>
       )}
-      {shape !== ShapeType.Line && shape !== ShapeType.Arrow && shape !== ShapeType.ArrowLeftLine && shape !== ShapeType.ArrowBidirectionalLine && !isCodeShape && isEditing && (
+      {supportsShapeText && isEditing && (
         <foreignObject
-          x={x + 10}
-          y={y + 10}
-          width={Math.max(0, width - 20)}
-          height={Math.max(0, height - 20)}
+          x={isConnector ? labelBounds.x : x + 10}
+          y={isConnector ? labelBounds.y : y + 10}
+          width={isConnector ? labelBounds.width : Math.max(0, width - 20)}
+          height={isConnector ? labelBounds.height : Math.max(0, height - 20)}
           pointerEvents="all"
           onPointerDown={(event) => event.stopPropagation()}
           data-export-shape-text="true"
           style={{ border: "none", outline: "none", overflow: "hidden" }}
         >
-          <ContentEditable
-            innerRef={textRef as never}
-            html={editableHtml(layer.value)}
-            onChange={(event: ContentEditableEvent) => updateValue(textFromEditor(event))}
-            onBlur={() => setIsEditing(false)}
-            className="flex h-full w-full min-h-0 min-w-0 items-center justify-center overflow-auto whitespace-pre-wrap break-words text-center text-sm font-medium leading-5 text-neutral-900 outline-none"
-            style={{ pointerEvents: "auto" }}
+          <textarea
+            ref={textRef}
+            value={textDraft}
+            onChange={(event) => {
+              const value = event.target.value;
+              setTextDraft(value);
+              updateValue(value);
+            }}
+            onBlur={(event) => {
+              const value = event.target.value;
+              setTextDraft(value);
+              updateValue(value);
+              setIsEditing(false);
+            }}
+            onPointerDown={(event) => event.stopPropagation()}
+            className="h-full w-full resize-none overflow-auto bg-transparent p-0 whitespace-pre-wrap break-words text-sm font-medium leading-5 text-neutral-900 outline-none [overflow-wrap:anywhere]"
+            style={{ pointerEvents: "auto", textAlign: (layer as any).textAlign ?? "center", fontFamily: (layer as any).fontFamily ?? "inherit", fontWeight: (layer as any).fontWeight === "bold" ? 700 : 500, fontSize: (layer as any).fontSize ?? 14 }}
           />
         </foreignObject>
       )}
