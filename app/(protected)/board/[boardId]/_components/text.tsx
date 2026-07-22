@@ -27,6 +27,7 @@ const fonts: Record<NoteFontFamily, { className: string }> = {
   playfair,
 };
 
+
 interface TextProps {
   id: string;
   layer: TextLayer;

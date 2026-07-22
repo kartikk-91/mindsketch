@@ -133,6 +133,11 @@ function createExportSvg(): { root: HTMLDivElement; svg: SVGSVGElement; width: n
     element.style.outline = "none";
     element.style.border = "none";
   });
+  layers.querySelectorAll<SVGElement>("[data-export-shape-text]").forEach((element) => {
+    element.style.outline = "none";
+    element.style.border = "none";
+    element.style.overflow = "hidden";
+  });
 
   // Keep sticky-note fills and text intact, but remove editor-only adornments from the output.
   layers.querySelectorAll(".drop-shadow-md").forEach((element) => element.classList.remove("drop-shadow-md"));

@@ -35,6 +35,7 @@ const fonts: Record<NoteFontFamily, { className: string }> = {
   playfair,
 };
 
+
 const tint = (color: Color, amount: number): Color => ({
   r: Math.round(color.r + (255 - color.r) * amount),
   g: Math.round(color.g + (255 - color.g) * amount),

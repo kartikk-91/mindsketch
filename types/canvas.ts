@@ -34,6 +34,21 @@ export enum ShapeType {
     Parallelogram,
     Cylinder,
     Cloud,
+    Pentagon,
+    Hexagon,
+    Heart,
+    SpeechBubble,
+    Cube,
+    Pyramid,
+    Cone,
+    Document,
+    Database,
+    ArrowLeft,
+    ArrowRight,
+    ArrowBidirectional,
+    ArrowLeftLine,
+    ArrowBidirectionalLine,
+    Code,
 }
 
 export type ShapeLayer = {

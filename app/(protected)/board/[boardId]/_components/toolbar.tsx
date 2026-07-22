@@ -19,11 +19,23 @@ import {
   Shapes,
   Minus,
   ArrowRight,
+  ArrowLeft,
+  ArrowLeftRight,
+  MoveHorizontal,
+  Code2,
   Diamond,
   Triangle,
   Star,
   Pill,
   Cloud,
+  Heart,
+  Hexagon,
+  MessageSquare,
+  FileText,
+  Database,
+  Box,
+  Pyramid,
+  Cone,
   ZoomIn,
   ZoomOut,
   RefreshCcw,
@@ -184,14 +196,19 @@ export const Toolbar = ({
                 absolute left-full ml-2 top-0
                 bg-white rounded-md shadow-lg
                 p-2 z-50
-                grid grid-cols-3 gap-1
-                w-[168px]
+                grid grid-cols-4 gap-1
+                w-[216px]
               "
               >
                 <ToolButton label="Rectangle" icon={Square} onClick={() => insertShape(ShapeType.Rectangle)} />
                 <ToolButton label="Ellipse" icon={Circle} onClick={() => insertShape(ShapeType.Ellipse)} />
                 <ToolButton label="Line" icon={Minus} onClick={() => insertShape(ShapeType.Line)} />
-                <ToolButton label="Arrow" icon={ArrowRight} onClick={() => insertShape(ShapeType.Arrow)} />
+                <ToolButton label="Right arrow" icon={ArrowRight} onClick={() => insertShape(ShapeType.Arrow)} />
+                <ToolButton label="Left arrow" icon={ArrowLeft} onClick={() => insertShape(ShapeType.ArrowLeftLine)} />
+                <ToolButton label="Double-sided arrow" icon={MoveHorizontal} onClick={() => insertShape(ShapeType.ArrowBidirectionalLine)} />
+                <ToolButton label="Right block arrow" icon={ArrowRight} onClick={() => insertShape(ShapeType.ArrowRight)} />
+                <ToolButton label="Left block arrow" icon={ArrowLeft} onClick={() => insertShape(ShapeType.ArrowLeft)} />
+                <ToolButton label="Double-sided block arrow" icon={ArrowLeftRight} onClick={() => insertShape(ShapeType.ArrowBidirectional)} />
                 <ToolButton label="Diamond" icon={Diamond} onClick={() => insertShape(ShapeType.Diamond)} />
                 <ToolButton label="Triangle" icon={Triangle} onClick={() => insertShape(ShapeType.Triangle)} />
                 <ToolButton label="Star" icon={Star} onClick={() => insertShape(ShapeType.Star)} />
@@ -199,6 +216,16 @@ export const Toolbar = ({
                 <ToolButton label="Parallelogram" icon={ParallelogramIcon} onClick={() => insertShape(ShapeType.Parallelogram)} />
                 <ToolButton label="Cylinder" icon={CylinderIcon} onClick={() => insertShape(ShapeType.Cylinder)} />
                 <ToolButton label="Cloud" icon={Cloud} onClick={() => insertShape(ShapeType.Cloud)} />
+                <ToolButton label="Pentagon" icon={Shapes} onClick={() => insertShape(ShapeType.Pentagon)} />
+                <ToolButton label="Hexagon" icon={Hexagon} onClick={() => insertShape(ShapeType.Hexagon)} />
+                <ToolButton label="Heart" icon={Heart} onClick={() => insertShape(ShapeType.Heart)} />
+                <ToolButton label="Speech bubble" icon={MessageSquare} onClick={() => insertShape(ShapeType.SpeechBubble)} />
+                <ToolButton label="Document" icon={FileText} onClick={() => insertShape(ShapeType.Document)} />
+                <ToolButton label="Database" icon={Database} onClick={() => insertShape(ShapeType.Database)} />
+                <ToolButton label="Cube" icon={Box} onClick={() => insertShape(ShapeType.Cube)} />
+                <ToolButton label="Pyramid" icon={Pyramid} onClick={() => insertShape(ShapeType.Pyramid)} />
+                <ToolButton label="Cone" icon={Cone} onClick={() => insertShape(ShapeType.Cone)} />
+                <ToolButton label="Code" icon={Code2} showHint={false} onClick={() => insertShape(ShapeType.Code)} />
               </div>
             )}
           </div>
@@ -269,7 +296,7 @@ export const Toolbar = ({
           </label>
           <button onClick={() => setSmartDrawing(!smartDrawing)} className={`flex h-9 items-center gap-1.5 rounded-xl px-2.5 text-xs font-medium transition ${smartDrawing ? "bg-[#FFF1BF] text-[#5b4713]" : "bg-[#FFF8E7] text-neutral-600 hover:bg-[#FFF1BF]"}`} title="Turn rough closed shapes into clean shapes"><WandSparkles className="h-4 w-4" />Smart shapes</button>
           </>}
-          {canvasState.mode === CanvasMode.Erasing && <p className="px-2 text-sm font-medium text-neutral-600">Click a pencil stroke to erase it</p>}
+          {canvasState.mode === CanvasMode.Erasing && <p className="px-2 text-sm font-medium text-neutral-600">Sweep over pencil strokes to erase</p>}
         </div>
       )}
       {canvasState.mode === CanvasMode.Connecting && (

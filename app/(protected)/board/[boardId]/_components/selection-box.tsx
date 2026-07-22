@@ -13,6 +13,7 @@ interface SelectionFrame {
 interface SelectionBoxProps {
   onResizeHandlePointerDown: (corner: Side, initialBounds: XYWH) => void;
   onRotateHandlePointerDown?: (e: React.PointerEvent, bounds: XYWH) => void;
+  onSelectionPointerDown?: (e: React.PointerEvent) => void;
   rotation?: number;
   frame?: SelectionFrame | null;
 }
@@ -29,6 +30,7 @@ function rotatedResizeCursor(base: "ew" | "ns" | "nwse" | "nesw", rotation: numb
 export const SelectionBox = memo(({
   onResizeHandlePointerDown,
   onRotateHandlePointerDown,
+  onSelectionPointerDown,
   rotation = 0,
   frame,
 }: SelectionBoxProps) => {
@@ -60,10 +62,11 @@ export const SelectionBox = memo(({
         y={bounds.y}
         width={bounds.width}
         height={bounds.height}
-        fill="none"
+        fill="transparent"
         stroke="#20C5A8"
         strokeWidth={1}
-        pointerEvents="none"
+        pointerEvents={onSelectionPointerDown ? "all" : "none"}
+        onPointerDown={onSelectionPointerDown}
       />
       {onRotateHandlePointerDown && (
         <>

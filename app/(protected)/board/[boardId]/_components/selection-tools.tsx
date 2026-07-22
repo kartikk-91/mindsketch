@@ -76,7 +76,8 @@ export const SelectionTools = memo(
         : null;
 
     const isLine = shapeKind === ShapeType.Line;
-    const isArrow = shapeKind === ShapeType.Arrow;
+    const isArrow = shapeKind === ShapeType.Arrow || shapeKind === ShapeType.ArrowLeftLine || shapeKind === ShapeType.ArrowBidirectionalLine;
+    const isCode = shapeKind === ShapeType.Code;
     const isLineOrArrow = isLine || isArrow;
     const isBoundArrow = isArrow && Boolean((selectedLayer as any)?.startLayerId && (selectedLayer as any)?.endLayerId);
 
@@ -104,7 +105,7 @@ export const SelectionTools = memo(
       : "regular";
 
     const canFill =
-      selectedLayer?.type === LayerType.Shape && !isLineOrArrow ||
+      selectedLayer?.type === LayerType.Shape && !isLineOrArrow && !isCode ||
       selectedLayer?.type === LayerType.Rectangle ||
       selectedLayer?.type === LayerType.Ellipse ||
       selectedLayer?.type === LayerType.Text ||
@@ -113,7 +114,7 @@ export const SelectionTools = memo(
 
     const canStroke =
       (selectedLayer?.type === LayerType.Shape && isLineOrArrow) ||
-      (selectedLayer?.type === LayerType.Shape && !isLineOrArrow) ||
+      (selectedLayer?.type === LayerType.Shape && !isLineOrArrow && !isCode) ||
       selectedLayer?.type === LayerType.Rectangle ||
       selectedLayer?.type === LayerType.Ellipse;
 
@@ -172,7 +173,7 @@ export const SelectionTools = memo(
           liveLayer.delete("fill");
           const type = liveLayer.get("type");
           const shape = liveLayer.get("shape");
-          const supportsBorder = type === LayerType.Rectangle || type === LayerType.Ellipse || (type === LayerType.Shape && shape !== ShapeType.Line && shape !== ShapeType.Arrow);
+          const supportsBorder = type === LayerType.Rectangle || type === LayerType.Ellipse || (type === LayerType.Shape && shape !== ShapeType.Line && shape !== ShapeType.Arrow && shape !== ShapeType.Code);
           if (supportsBorder && !liveLayer.get("stroke")) {
             liveLayer.update({ stroke: DEFAULT_STROKE, strokeWidth: 2 });
           }
@@ -305,7 +306,7 @@ export const SelectionTools = memo(
       setPanel(null);
     }, [selectedId]);
 
-    const canChangeColor = selectedLayer?.type !== LayerType.Image && (canFill || canStroke);
+    const canChangeColor = !isCode && selectedLayer?.type !== LayerType.Image && (canFill || canStroke);
 
     if (!selectionBounds || !selectedLayer || canvasState.mode !== CanvasMode.None) return null;
 

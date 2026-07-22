@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
@@ -24,6 +23,7 @@ import { Path } from "./path";
 import { useDisableScrollBounce } from "@/hooks/use-disable-scroll-bounce";
 import { useDeleteLayers } from "@/hooks/use-delete-layers";
 import ShareActions from "./share-actions";
+import { recognizeSmartShape } from "@/lib/smart-shapes";
 
 
 
@@ -31,27 +31,6 @@ const LONG_PRESS_MS = 350;
 const MOVE_TOLERANCE = 6;
 
 const MAX_LAYERS = 100;
-
-const recognizeSmartShape = (points: number[][], color: Color, strokeWidth: number): ShapeLayer | null => {
-    if (points.length < 8) return null;
-    const xs = points.map(([x]) => x);
-    const ys = points.map(([, y]) => y);
-    const x = Math.min(...xs), y = Math.min(...ys);
-    const width = Math.max(...xs) - x, height = Math.max(...ys) - y;
-    if (width < 30 || height < 30) return null;
-    const [startX, startY] = points[0];
-    const [endX, endY] = points[points.length - 1];
-    if (Math.hypot(endX - startX, endY - startY) > Math.min(width, height) * 0.45) return null;
-    const cx = x + width / 2, cy = y + height / 2;
-    const radii = points.map(([px, py]) => Math.hypot((px - cx) / (width / 2), (py - cy) / (height / 2)));
-    const averageRadius = radii.reduce((sum, radius) => sum + radius, 0) / radii.length;
-    const variation = radii.reduce((sum, radius) => sum + Math.abs(radius - averageRadius), 0) / radii.length;
-    return {
-        type: LayerType.Shape,
-        shape: variation < 0.18 ? ShapeType.Ellipse : ShapeType.Rectangle,
-        x, y, width, height, fill: undefined, stroke: color, strokeWidth: Math.max(2, Math.round(strokeWidth / 3)),
-    };
-};
 
 type SelectionFrame = {
     ids: string[];
@@ -339,10 +318,68 @@ export const Canvas = ({ boardId }: CanvasProps) => {
         setMyPresence({ selection: [id] }, { addToHistory: true });
     }, [camera]);
 
+    const insertPastedCode = useMutation(({ storage, setMyPresence }, value: string) => {
+        const layers = storage.get("layers");
+        if (layers.size >= MAX_LAYERS) return;
+        const lines = value.replace(/\r\n?/g, "\n").split("\n");
+        const longestLine = Math.max(0, ...lines.map((line) => line.replace(/\t/g, "    ").length));
+        const width = Math.max(420, Math.min(760, longestLine * 8.4 + 58));
+        const height = Math.max(150, Math.min(540, lines.length * 24 + 64));
+        const x = (window.innerWidth / 2 - camera.x) / camera.scale - width / 2;
+        const y = (window.innerHeight / 2 - camera.y) / camera.scale - height / 2;
+        const id = nanoid();
+        layers.set(id, new LiveObject<ShapeLayer>({
+            type: LayerType.Shape,
+            shape: ShapeType.Code,
+            x,
+            y,
+            width,
+            height,
+            value,
+            rotation: 0,
+        }));
+        storage.get("layerIds").push(id);
+        setMyPresence({ selection: [id] }, { addToHistory: true });
+    }, [camera]);
+
+    const insertPastedText = useMutation(({ storage, setMyPresence }, value: string) => {
+        const layers = storage.get("layers");
+        if (layers.size >= MAX_LAYERS || !value) return;
+        const lines = value.split("\n");
+        const longestLine = Math.max(1, ...lines.map((line) => line.length));
+        const width = Math.max(160, Math.min(520, longestLine * 8.5 + 32));
+        const height = Math.max(52, Math.min(360, lines.length * 25 + 28));
+        const x = (window.innerWidth / 2 - camera.x) / camera.scale - width / 2;
+        const y = (window.innerHeight / 2 - camera.y) / camera.scale - height / 2;
+        const id = nanoid();
+        layers.set(id, new LiveObject({
+            type: LayerType.Text, x, y, width, height, fill: BLACK, value,
+            textAlign: "left", fontFamily: "inter", fontWeight: "regular", rotation: 0,
+        }) as LiveObject<Layer>);
+        storage.get("layerIds").push(id);
+        setMyPresence({ selection: [id] }, { addToHistory: true });
+    }, [camera]);
+
 
     useEffect(() => {
         function onKeyDown(e: KeyboardEvent) {
             const isMod = e.ctrlKey || e.metaKey;
+            const target = e.target as HTMLElement | null;
+            const isEditingText = target?.isContentEditable || Boolean(target?.closest("input, textarea"));
+
+            if (isMod && !isEditingText && e.key.toLowerCase() === "c") {
+                e.preventDefault();
+                copySelectedLayers();
+                return;
+            }
+
+            // Keep ordinary Ctrl/Cmd+V available for text and code from the system clipboard.
+            // Canvas-layer paste remains available as Ctrl/Cmd+Shift+V after copying a layer.
+            if (isMod && e.shiftKey && !isEditingText && e.key.toLowerCase() === "v" && clipboard?.length) {
+                e.preventDefault();
+                pasteLayers();
+                return;
+            }
 
             if (isMod && e.key.toLowerCase() === "d") {
                 e.preventDefault();
@@ -381,21 +418,34 @@ export const Canvas = ({ boardId }: CanvasProps) => {
 
         document.addEventListener("keydown", onKeyDown);
         return () => document.removeEventListener("keydown", onKeyDown);
-    }, [duplicateSelectedLayers, deleteLayers, history]);
+    }, [clipboard, copySelectedLayers, deleteLayers, duplicateSelectedLayers, history, pasteLayers]);
 
     useEffect(() => {
         const onPaste = (event: ClipboardEvent) => {
+            const target = event.target as HTMLElement | null;
+            if (target?.isContentEditable || target?.closest("input, textarea")) return;
             const image = Array.from(event.clipboardData?.files ?? []).find((file) => file.type.startsWith("image/"))
                 ?? Array.from(event.clipboardData?.items ?? []).map((item) => item.type.startsWith("image/") ? item.getAsFile() : null).find(Boolean);
-            if (!image) return;
+            if (image) {
+                event.preventDefault();
+                const reader = new FileReader();
+                reader.onload = () => typeof reader.result === "string" && insertPastedImage(reader.result);
+                reader.readAsDataURL(image);
+                return;
+            }
+
+            const text = event.clipboardData?.getData("text/plain")?.replace(/\r\n?/g, "\n") ?? "";
+            const codeSignals = /(?:\b(?:const|let|var|function|class|interface|import|export|return|def|fn|public|private|async|await)\b|[{};]|=>|<\/?[A-Za-z][^>]*>)/;
+            const clearCodeStart = /^\s*(?:const|let|var|function|class|interface|import|export|def|fn|public|private|async)\b/;
+            const isJson = /^\s*[{[]/.test(text) && /[}:\]]\s*$/.test(text);
+            if (!text) return;
             event.preventDefault();
-            const reader = new FileReader();
-            reader.onload = () => typeof reader.result === "string" && insertPastedImage(reader.result);
-            reader.readAsDataURL(image);
+            if ((text.includes("\n") && codeSignals.test(text)) || clearCodeStart.test(text) || isJson) insertPastedCode(text);
+            else insertPastedText(text);
         };
         window.addEventListener("paste", onPaste);
         return () => window.removeEventListener("paste", onPaste);
-    }, [insertPastedImage]);
+    }, [insertPastedCode, insertPastedImage, insertPastedText]);
 
     useEffect(() => {
         function onImageUploaded(e: Event) {
@@ -486,17 +536,19 @@ export const Canvas = ({ boardId }: CanvasProps) => {
 
             const id = nanoid();
 
+            const isCode = shape === ShapeType.Code;
             const layer = new LiveObject<ShapeLayer>({
                 type: LayerType.Shape,
                 shape,
                 x: position.x,
                 y: position.y,
-                width: 120,
-                height: 80,
-                fill: undefined,
-                stroke: BLACK,
-                strokeWidth: 2,
+                width: isCode ? 560 : 120,
+                height: isCode ? 260 : 80,
+                fill: isCode ? undefined : undefined,
+                stroke: isCode ? undefined : BLACK,
+                strokeWidth: isCode ? undefined : 2,
                 rotation: 0,
+                value: isCode ? "const message = 'Start typing code';\nconsole.log(message);" : undefined,
             });
 
 
@@ -625,7 +677,6 @@ export const Canvas = ({ boardId }: CanvasProps) => {
         const layers = storage.get("layers");
         const ids = storage.get("layerIds");
         const layer = layers.get(layerId);
-        // The eraser is intentionally limited to freehand pencil strokes.
         if (!layer || layer.get("type") !== LayerType.Path) return;
         const index = ids.toImmutable().indexOf(layerId);
         if (index === -1) return;
@@ -633,6 +684,15 @@ export const Canvas = ({ boardId }: CanvasProps) => {
         ids.delete(index);
         setMyPresence({ selection: [] }, { addToHistory: true });
     }, []);
+
+    const beginSelectionDrag = useCallback((e: React.PointerEvent) => {
+        if (selection.length < 2 || canvasState.mode !== CanvasMode.None) return;
+        e.stopPropagation();
+        const point = pointerEventToCanvasPoint(e, camera);
+        if (!point) return;
+        history.pause();
+        setCanvasState({ mode: CanvasMode.Translating, current: point });
+    }, [camera, canvasState.mode, history, selection.length]);
 
     const resizeSelectedLayer = useMutation(
         ({ storage }, point: Point) => {
@@ -910,6 +970,10 @@ export const Canvas = ({ boardId }: CanvasProps) => {
             return;
         }
 
+        if (canvasState.mode === CanvasMode.Erasing) {
+            return;
+        }
+
         if (canvasState.mode === CanvasMode.Pencil) {
             startDrawing(point, e.pressure);
             return;
@@ -960,6 +1024,9 @@ export const Canvas = ({ boardId }: CanvasProps) => {
         }
         else if (canvasState.mode === CanvasMode.Pencil) {
             insertPath();
+        }
+        else if (canvasState.mode === CanvasMode.Erasing) {
+            // Keep the eraser selected after either an erased path or an empty-canvas click.
         }
         else if (canvasState.mode === CanvasMode.Connecting) {
             // Connector mode stays active until the user presses Escape or picks another tool.
@@ -1023,6 +1090,7 @@ export const Canvas = ({ boardId }: CanvasProps) => {
     const onLayerPointerDown = useMutation(
         ({ storage, self, setMyPresence }, e: React.PointerEvent, layerId: string) => {
             if (canvasState.mode === CanvasMode.Erasing) {
+                e.stopPropagation();
                 eraseLayer(layerId);
                 return;
             }
@@ -1195,7 +1263,7 @@ export const Canvas = ({ boardId }: CanvasProps) => {
                     style={{
                         cursor:
                             canvasState.mode === CanvasMode.Erasing
-                                ? 'url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2724%27 height=%2724%27 viewBox=%270 0 24 24%27 fill=%27none%27 stroke=%27%235b4713%27 stroke-width=%272%27 stroke-linecap=%27round%27 stroke-linejoin=%27round%27%3E%3Cpath d=%27m7 21-4-4 9.5-9.5 4 4L7 21Z%27/%3E%3Cpath d=%27m13.5 6.5 4 4%27/%3E%3Cpath d=%27M3 17h4%27/%3E%3C/svg%3E") 4 20, auto'
+                                ? 'url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2740%27 height=%2740%27 viewBox=%270 0 24 24%27 fill=%27none%27 stroke=%27%235b4713%27 stroke-width=%272%27 stroke-linecap=%27round%27 stroke-linejoin=%27round%27%3E%3Cpath d=%27m7 21-4-4 9.5-9.5 4 4L7 21Z%27/%3E%3Cpath d=%27m13.5 6.5 4 4%27/%3E%3Cpath d=%27M3 17h4%27/%3E%3C/svg%3E") 7 33, auto'
                                 : canvasState.mode === CanvasMode.Inserting &&
                                 canvasState.layertype === LayerType.Image
                                 ? "crosshair"
@@ -1267,6 +1335,7 @@ export const Canvas = ({ boardId }: CanvasProps) => {
                         <SelectionBox
                             onResizeHandlePointerDown={onResizeHandlePointerDown}
                             onRotateHandlePointerDown={onRotateHandlePointerDown}
+                            onSelectionPointerDown={selection.length > 1 ? beginSelectionDrag : undefined}
                             frame={visibleSelectionFrame}
                             rotation={
                                 selection.length === 1 && selectedLayer && "rotation" in selectedLayer
