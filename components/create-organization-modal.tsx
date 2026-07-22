@@ -31,6 +31,7 @@ export const CreateOrganizationModal = ({ open, onOpenChange }: CreateOrganizati
     try {
       const organization = await createOrganization({ name: workspaceName });
       await setActive({ organization: organization.id });
+      window.dispatchEvent(new CustomEvent("mindsketch:organization-created", { detail: organization }));
       toast.success(`${organization.name} is ready to use.`);
       setName("");
       onOpenChange(false);

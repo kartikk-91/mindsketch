@@ -1,25 +1,44 @@
 import { useSWRConfig } from "swr";
-import { toast } from "sonner";
 import { boardKey } from "./use-board";
 
-export function useFavoriteBoard() {
-  const { mutate } = useSWRConfig();
+interface Board {
+  id: string;
+  isFavorite: boolean;
+  [key: string]: unknown;
+}
 
-  const favorite = async (id: string, orgId: string) => {
+export function useFavoriteBoard() {
+  const { cache, mutate } = useSWRConfig();
+
+  const updateBoardLists = async (id: string, isFavorite: boolean) => {
+    const cacheMap = cache as Map<string, { data?: unknown }>;
+
+    const sourceBoard = Array.from(cacheMap.entries())
+      .filter(([key]) => typeof key === "string" && key.startsWith("/api/boards?"))
+      .flatMap(([, entry]) => (Array.isArray(entry?.data) ? (entry.data as Board[]) : []))
+      .find((board) => board.id === id);
+
     await mutate(
       (key) => typeof key === "string" && key.startsWith("/api/boards?"),
-      (boards: any[] | undefined) => {
+      (boards: Board[] | undefined, key?: string) => {
         if (!boards) return boards;
-        return boards.map((b: any) =>
-          b.id === id ? { ...b, isFavorite: true } : b
-        );
+        const favoritesView = key ? new URLSearchParams(key.split("?")[1]).get("favorites") === "true" : false;
+        if (favoritesView && !isFavorite) return boards.filter((board) => board.id !== id);
+        const existing = boards.find((board) => board.id === id);
+        if (existing) return boards.map((board) => board.id === id ? { ...board, isFavorite } : board);
+        if (favoritesView && isFavorite && sourceBoard) return [{ ...sourceBoard, isFavorite: true }, ...boards];
+        return boards;
       },
       false
     );
+  };
+
+  const favorite = async (id: string, orgId: string) => {
+    await updateBoardLists(id, true);
 
     await mutate(
       boardKey(id),
-      (board: any) => {
+      (board: Board | undefined) => {
         if (!board) return board;
         return { ...board, isFavorite: true };
       },
@@ -49,20 +68,11 @@ export function useFavoriteBoard() {
   };
 
   const unfavorite = async (id: string) => {
-    await mutate(
-      (key) => typeof key === "string" && key.startsWith("/api/boards?"),
-      (boards: any[] | undefined) => {
-        if (!boards) return boards;
-        return boards.map((b: any) =>
-          b.id === id ? { ...b, isFavorite: false } : b
-        );
-      },
-      false
-    );
+    await updateBoardLists(id, false);
 
     await mutate(
       boardKey(id),
-      (board: any) => {
+      (board: Board | undefined) => {
         if (!board) return board;
         return { ...board, isFavorite: false };
       },

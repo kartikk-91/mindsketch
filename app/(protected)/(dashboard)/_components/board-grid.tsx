@@ -136,7 +136,7 @@ const GridCard = ({ board }: { board: Board }) => {
             {board.title}
           </p>
           <p className="text-[11px] text-[#696969] mt-0.5 truncate">
-            {authorLabel} &middot; Last edited {timeLabel}
+            {authorLabel} &middot; {timeLabel}
           </p>
         </div>
 

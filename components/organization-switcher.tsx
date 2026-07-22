@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useOrganization, useOrganizationList } from "@clerk/nextjs";
 import { Check, ChevronDown, Loader2, MailCheck, Plus, Settings, UserPlus, Users } from "lucide-react";
 import { toast } from "sonner";
@@ -24,10 +24,21 @@ export const OrganizationSwitcher = ({ variant = "desktop" }: OrganizationSwitch
   const [acceptingId, setAcceptingId] = useState<string | null>(null);
   const [membersOpen, setMembersOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [newOrganizations, setNewOrganizations] = useState<Array<{ id: string; name: string; imageUrl: string }>>([]);
   const isAdmin = membership?.role === "org:admin";
 
   const invitations = userInvitations?.data ?? [];
   const hasInvitations = invitations.length > 0;
+
+  useEffect(() => {
+    const addOrganization = (event: Event) => {
+      const organization = (event as CustomEvent<{ id: string; name: string; imageUrl: string }>).detail;
+      if (!organization) return;
+      setNewOrganizations((current) => current.some((item) => item.id === organization.id) ? current : [...current, organization]);
+    };
+    window.addEventListener("mindsketch:organization-created", addOrganization);
+    return () => window.removeEventListener("mindsketch:organization-created", addOrganization);
+  }, []);
 
   const selectOrganization = async (organizationId: string) => {
     if (!setActive || organizationId === organization?.id) return;
@@ -70,12 +81,14 @@ export const OrganizationSwitcher = ({ variant = "desktop" }: OrganizationSwitch
           <DropdownMenuLabel className="px-3 py-2 text-[11px] font-bold uppercase tracking-[0.12em] text-[#969AA2]">Your workspaces</DropdownMenuLabel>
           {userMemberships?.data?.map((membership) => {
             const isActive = organization?.id === membership.organization.id;
+            const itemOrganization = isActive ? organization : membership.organization;
             return <DropdownMenuItem key={membership.organization.id} onSelect={() => selectOrganization(membership.organization.id)} className={cn("group rounded-xl px-3 py-2.5 text-[#555B68] focus:bg-[#F3F8F4] focus:text-[#181C31]", isActive && "bg-[#F1F8F3] text-[#181C31]")}>
-              <Avatar className="h-8 w-8 rounded-lg border border-[#E4E7E1]"><AvatarImage src={membership.organization.imageUrl} alt="" /><AvatarFallback className="rounded-lg bg-[#F3F6D5] text-xs font-bold text-[#7F8B32]">{membership.organization.name.slice(0, 1).toUpperCase()}</AvatarFallback></Avatar>
-              <span className="min-w-0 flex-1 truncate text-sm font-medium">{membership.organization.name}</span>
+              <Avatar className="h-8 w-8 rounded-lg border border-[#E4E7E1]"><AvatarImage src={itemOrganization?.imageUrl} alt="" /><AvatarFallback className="rounded-lg bg-[#F3F6D5] text-xs font-bold text-[#7F8B32]">{itemOrganization?.name.slice(0, 1).toUpperCase()}</AvatarFallback></Avatar>
+              <span className="min-w-0 flex-1 truncate text-sm font-medium">{itemOrganization?.name}</span>
               {isActive && <Check className="h-4 w-4 text-[#159A83]" />}
             </DropdownMenuItem>;
           })}
+          {newOrganizations.filter((item) => !userMemberships?.data?.some((membership) => membership.organization.id === item.id)).map((item) => <DropdownMenuItem key={item.id} onSelect={() => selectOrganization(item.id)} className={cn("group rounded-xl px-3 py-2.5 text-[#555B68] focus:bg-[#F3F8F4] focus:text-[#181C31]", organization?.id === item.id && "bg-[#F1F8F3] text-[#181C31]")}><Avatar className="h-8 w-8 rounded-lg border border-[#E4E7E1]"><AvatarImage src={item.imageUrl} alt="" /><AvatarFallback className="rounded-lg bg-[#F3F6D5] text-xs font-bold text-[#7F8B32]">{item.name.slice(0, 1).toUpperCase()}</AvatarFallback></Avatar><span className="min-w-0 flex-1 truncate text-sm font-medium">{item.name}</span>{organization?.id === item.id && <Check className="h-4 w-4 text-[#159A83]" />}</DropdownMenuItem>)}
           {hasInvitations && <>
             <DropdownMenuSeparator className="my-1.5 bg-[#EEF0EC]" />
             <DropdownMenuLabel className="flex items-center gap-2 px-3 py-2 text-[11px] font-bold uppercase tracking-[0.12em] text-[#159A83]"><MailCheck className="h-3.5 w-3.5" /> Invitations ({invitations.length})</DropdownMenuLabel>

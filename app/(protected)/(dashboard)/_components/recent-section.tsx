@@ -151,7 +151,7 @@ const RecentCard = ({
             {board.title}
           </p>
           <p className="text-xs text-[#696969] mt-0.5">
-            {authorLabel} &middot; Last edited {timeLabel}
+            {authorLabel} &middot; {timeLabel}
           </p>
         </div>
 
