@@ -12,7 +12,7 @@ function inline(value: string) {
 const isTableRow = (line: string) => /^\s*\|.*\|\s*$/.test(line);
 const cells = (line: string) => line.trim().slice(1, -1).split("|").map((cell) => cell.trim());
 
-/** Small, safe Markdown renderer for model output—no raw HTML is injected into the board. */
+/** Small, safe Markdown renderer for model output-no raw HTML is injected into the board. */
 export function MarkdownContent({ content }: { content: string }) {
   const lines = content.split("\n");
   const nodes: React.ReactNode[] = [];

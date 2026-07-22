@@ -1,6 +1,6 @@
 "use client";
 
-import { EmptyBoards } from "./empty-boards-new";
+import { EmptyBoards } from "./empty-boards";
 import { EmptyFavorites } from "./empty-favorites";
 import { EmptySearch } from "./empty-search";
 import { BoardGrid } from "./board-grid";

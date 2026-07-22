@@ -1,10 +1,17 @@
 "use client";
 
 import { OrganizationSwitcher } from "@/components/organization-switcher";
+import { InviteModal } from "@/components/invite-modal";
+import { Button } from "@/components/ui/button";
 import { SearchInput } from "./search-input";
-import { Sparkles } from "lucide-react";
+import { Sparkles, UserPlus } from "lucide-react";
+import { useOrganization } from "@clerk/nextjs";
+import { useState } from "react";
 
 export const Navbar = () => {
+  const { organization, membership } = useOrganization();
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const isAdmin = membership?.role === "org:admin";
   return (
     <header className="sticky top-0 z-30 w-full bg-white/95 backdrop-blur-sm border-b border-[#EEEEEE]">
       <div className="flex h-[64px] items-center gap-x-4 px-4 lg:px-6">
@@ -23,10 +30,14 @@ export const Navbar = () => {
         </div>
 
         
-        <div className="flex lg:hidden">
+        <div className="flex items-center gap-2">
+          {isAdmin && organization && <Button size="sm" onClick={() => setInviteOpen(true)} className="hidden rounded-xl bg-[#181C31] px-3 text-xs font-semibold text-white hover:bg-[#30364F] sm:inline-flex"><UserPlus className="h-4 w-4" />Invite members</Button>}
+          <div className="flex lg:hidden">
           <OrganizationSwitcher variant="mobile" />
+          </div>
         </div>
       </div>
+      <InviteModal open={inviteOpen} onOpenChange={setInviteOpen} orgId={organization?.id} />
     </header>
   );
 };

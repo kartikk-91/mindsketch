@@ -16,7 +16,7 @@ export const EmptyFavorites = () => {
           No favorites yet
         </h2>
         <p className="mt-2 text-sm text-[#696969] leading-relaxed">
-          Star the boards you use most — they&apos;ll appear here for quick access.
+          Star the boards you use most - they&apos;ll appear here for quick access.
         </p>
         <p className="mt-4 text-xs text-[#999AA1]">
           Hover over any board and click the star icon to add it.

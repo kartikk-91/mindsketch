@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useOrganization, useOrganizationList } from "@clerk/nextjs";
-import { Check, ChevronDown, Loader2, MailCheck, Plus, UserPlus, Users } from "lucide-react";
+import { Check, ChevronDown, Loader2, MailCheck, Plus, Settings, UserPlus, Users } from "lucide-react";
 import { toast } from "sonner";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 import { CreateOrganizationModal } from "@/components/create-organization-modal";
 import { InviteModal } from "@/components/invite-modal";
 import { OrganizationMembersModal } from "@/components/organization-members-modal";
+import { OrganizationSettingsModal } from "@/components/organization-settings-modal";
 
 interface OrganizationSwitcherProps {
   variant?: "desktop" | "mobile";
@@ -22,9 +23,9 @@ export const OrganizationSwitcher = ({ variant = "desktop" }: OrganizationSwitch
   const [inviteOpen, setInviteOpen] = useState(false);
   const [acceptingId, setAcceptingId] = useState<string | null>(null);
   const [membersOpen, setMembersOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const isAdmin = membership?.role === "org:admin";
 
-  const currentOrg = userMemberships?.data?.find((membership) => membership.organization.id === organization?.id);
   const invitations = userInvitations?.data ?? [];
   const hasInvitations = invitations.length > 0;
 
@@ -59,8 +60,8 @@ export const OrganizationSwitcher = ({ variant = "desktop" }: OrganizationSwitch
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <button type="button" className={cn("group flex w-full items-center gap-2.5 rounded-xl border border-[#E4E7E1] bg-white px-2.5 py-2 text-left shadow-sm shadow-[#181C31]/[0.02] transition hover:border-[#A7DCD0] hover:bg-[#FAFCF9] focus:outline-none focus:ring-2 focus:ring-[#20C5A8]/30", variant === "mobile" && "max-w-[280px]")}>
-            <Avatar className="h-7 w-7 rounded-lg border border-[#E4E7E1]"><AvatarImage src={currentOrg?.organization.imageUrl} alt="" /><AvatarFallback className="rounded-lg bg-[#E4F7F0] text-[11px] font-bold text-[#159A83]">{currentOrg?.organization.name?.slice(0, 1).toUpperCase() || <Users className="h-3.5 w-3.5" />}</AvatarFallback></Avatar>
-            <span className="min-w-0 flex-1 truncate text-[13px] font-semibold text-[#303449]">{currentOrg?.organization.name || "Select workspace"}</span>
+            <Avatar className="h-7 w-7 rounded-lg border border-[#E4E7E1]"><AvatarImage src={organization?.imageUrl} alt="" /><AvatarFallback className="rounded-lg bg-[#F3F6D5] text-[11px] font-bold text-[#7F8B32]">{organization?.name?.slice(0, 1).toUpperCase() || <Users className="h-3.5 w-3.5" />}</AvatarFallback></Avatar>
+            <span className="min-w-0 flex-1 truncate text-[13px] font-semibold text-[#303449]">{organization?.name || "Select workspace"}</span>
             {hasInvitations && <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-[#20C5A8] px-1 text-[10px] font-bold text-white">{invitations.length}</span>}
             <ChevronDown className="h-4 w-4 shrink-0 text-[#8B9098] transition group-data-[state=open]:rotate-180" />
           </button>
@@ -70,7 +71,7 @@ export const OrganizationSwitcher = ({ variant = "desktop" }: OrganizationSwitch
           {userMemberships?.data?.map((membership) => {
             const isActive = organization?.id === membership.organization.id;
             return <DropdownMenuItem key={membership.organization.id} onSelect={() => selectOrganization(membership.organization.id)} className={cn("group rounded-xl px-3 py-2.5 text-[#555B68] focus:bg-[#F3F8F4] focus:text-[#181C31]", isActive && "bg-[#F1F8F3] text-[#181C31]")}>
-              <Avatar className="h-8 w-8 rounded-lg border border-[#E4E7E1]"><AvatarImage src={membership.organization.imageUrl} alt="" /><AvatarFallback className="rounded-lg bg-[#FFF5DF] text-xs font-bold text-[#B57B24]">{membership.organization.name.slice(0, 1).toUpperCase()}</AvatarFallback></Avatar>
+              <Avatar className="h-8 w-8 rounded-lg border border-[#E4E7E1]"><AvatarImage src={membership.organization.imageUrl} alt="" /><AvatarFallback className="rounded-lg bg-[#F3F6D5] text-xs font-bold text-[#7F8B32]">{membership.organization.name.slice(0, 1).toUpperCase()}</AvatarFallback></Avatar>
               <span className="min-w-0 flex-1 truncate text-sm font-medium">{membership.organization.name}</span>
               {isActive && <Check className="h-4 w-4 text-[#159A83]" />}
             </DropdownMenuItem>;
@@ -87,12 +88,14 @@ export const OrganizationSwitcher = ({ variant = "desktop" }: OrganizationSwitch
           <DropdownMenuSeparator className="my-1.5 bg-[#EEF0EC]" />
           <DropdownMenuItem disabled={!organization} onSelect={() => setMembersOpen(true)} className="rounded-xl px-3 py-2.5 text-[#555B68] focus:bg-[#F3F8F4] focus:text-[#181C31]"><Users className="h-4 w-4 text-[#159A83]" /><span className="text-sm font-medium">View members</span></DropdownMenuItem>
           {isAdmin && <DropdownMenuItem disabled={!organization} onSelect={() => setInviteOpen(true)} className="rounded-xl px-3 py-2.5 text-[#555B68] focus:bg-[#F3F8F4] focus:text-[#181C31]"><UserPlus className="h-4 w-4 text-[#159A83]" /><span className="text-sm font-medium">Invite collaborators</span></DropdownMenuItem>}
+          {isAdmin && <DropdownMenuItem disabled={!organization} onSelect={() => setSettingsOpen(true)} className="rounded-xl px-3 py-2.5 text-[#555B68] focus:bg-[#F3F8F4] focus:text-[#181C31]"><Settings className="h-4 w-4 text-[#159A83]" /><span className="text-sm font-medium">Workspace details</span></DropdownMenuItem>}
           <DropdownMenuItem onSelect={() => setCreateOrgOpen(true)} className="rounded-xl px-3 py-2.5 text-[#555B68] focus:bg-[#F3F8F4] focus:text-[#181C31]"><Plus className="h-4 w-4 text-[#159A83]" /><span className="text-sm font-medium">Create workspace</span></DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
       <CreateOrganizationModal open={createOrgOpen} onOpenChange={setCreateOrgOpen} />
       <InviteModal open={inviteOpen} onOpenChange={setInviteOpen} orgId={organization?.id} />
       <OrganizationMembersModal open={membersOpen} onOpenChange={setMembersOpen} />
+      <OrganizationSettingsModal open={settingsOpen} onOpenChange={setSettingsOpen} />
     </>
   );
 };
