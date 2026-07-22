@@ -7,6 +7,8 @@ import {
   Circle,
   MousePointer2,
   Pencil,
+  Eraser,
+  WandSparkles,
   Redo2,
   Square,
   StickyNote,
@@ -51,6 +53,10 @@ interface ToolbarProps {
   resetZoom: () => void;
   penSize: number;
   setPenSize: (size: number) => void;
+  penColor: { r: number; g: number; b: number };
+  setPenColor: (color: { r: number; g: number; b: number }) => void;
+  smartDrawing: boolean;
+  setSmartDrawing: (enabled: boolean) => void;
 }
 
 
@@ -66,6 +72,10 @@ export const Toolbar = ({
   resetZoom,
   penSize,
   setPenSize,
+  penColor,
+  setPenColor,
+  smartDrawing,
+  setSmartDrawing,
 }: ToolbarProps) => {
 
   const shapePopoverRef = useRef<HTMLDivElement>(null);
@@ -223,11 +233,13 @@ export const Toolbar = ({
           <ToolButton label="Redo" icon={Redo2} onClick={redo} isDisabled={!canRedo} />
         </div>
       </div>
-      {canvasState.mode === CanvasMode.Pencil && (
-        <div className="absolute bottom-0 left-1/2 z-30 flex -translate-x-1/2 items-center gap-3 rounded-t-2xl border border-b-0 border-neutral-200/80 bg-white/95 px-4 py-3 shadow-[0_-10px_30px_rgba(15,23,42,0.14)] backdrop-blur">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-neutral-900 text-white">
-            <Pencil className="h-4 w-4" />
+      {(canvasState.mode === CanvasMode.Pencil || canvasState.mode === CanvasMode.Erasing) && (
+        <div className="absolute bottom-0 left-1/2 z-30 flex -translate-x-1/2 items-center gap-3 border border-b-0 border-neutral-200/80 bg-white/95 px-5 py-3 shadow-[0_-10px_30px_rgba(15,23,42,0.14)] backdrop-blur [clip-path:polygon(7%_0,93%_0,100%_100%,0_100%)]">
+          <div className="flex rounded-xl bg-neutral-100 p-1">
+            <button aria-label="Pen" onClick={() => setCanvasState({ mode: CanvasMode.Pencil })} className={`flex h-9 w-9 items-center justify-center rounded-lg transition ${canvasState.mode === CanvasMode.Pencil ? "bg-[#FFF1BF] text-[#5b4713] shadow-sm" : "text-neutral-600 hover:bg-white"}`}><Pencil className="h-[18px] w-[18px]" /></button>
+            <button aria-label="Erase pencil strokes" onClick={() => setCanvasState({ mode: CanvasMode.Erasing })} className={`flex h-9 w-9 items-center justify-center rounded-lg transition ${canvasState.mode === CanvasMode.Erasing ? "bg-[#FFF1BF] text-[#5b4713] shadow-sm" : "text-neutral-600 hover:bg-white"}`}><Eraser className="h-[18px] w-[18px]" /></button>
           </div>
+          {canvasState.mode === CanvasMode.Pencil && <>
           <div className="min-w-32">
             <div className="mb-1 flex items-center justify-between text-[11px] font-medium text-neutral-500">
               <span>Stroke</span><span>{penSize}px</span>
@@ -242,6 +254,22 @@ export const Toolbar = ({
               className="h-1.5 w-36 cursor-pointer accent-neutral-900"
             />
           </div>
+          <label className="relative flex h-9 w-9 cursor-pointer items-center justify-center overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-sm" title="Pen color">
+            <span className="h-5 w-5 rounded-lg border border-black/10" style={{ backgroundColor: `rgb(${penColor.r}, ${penColor.g}, ${penColor.b})` }} />
+            <input
+              aria-label="Pen color"
+              type="color"
+              value={`#${[penColor.r, penColor.g, penColor.b].map((value) => value.toString(16).padStart(2, "0")).join("")}`}
+              onChange={(event) => {
+                const hex = event.target.value;
+                setPenColor({ r: parseInt(hex.slice(1, 3), 16), g: parseInt(hex.slice(3, 5), 16), b: parseInt(hex.slice(5, 7), 16) });
+              }}
+              className="absolute inset-0 cursor-pointer opacity-0"
+            />
+          </label>
+          <button onClick={() => setSmartDrawing(!smartDrawing)} className={`flex h-9 items-center gap-1.5 rounded-xl px-2.5 text-xs font-medium transition ${smartDrawing ? "bg-[#FFF1BF] text-[#5b4713]" : "bg-[#FFF8E7] text-neutral-600 hover:bg-[#FFF1BF]"}`} title="Turn rough closed shapes into clean shapes"><WandSparkles className="h-4 w-4" />Smart shapes</button>
+          </>}
+          {canvasState.mode === CanvasMode.Erasing && <p className="px-2 text-sm font-medium text-neutral-600">Click a pencil stroke to erase it</p>}
         </div>
       )}
       {canvasState.mode === CanvasMode.Connecting && (

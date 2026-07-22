@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
@@ -30,6 +31,27 @@ const LONG_PRESS_MS = 350;
 const MOVE_TOLERANCE = 6;
 
 const MAX_LAYERS = 100;
+
+const recognizeSmartShape = (points: number[][], color: Color, strokeWidth: number): ShapeLayer | null => {
+    if (points.length < 8) return null;
+    const xs = points.map(([x]) => x);
+    const ys = points.map(([, y]) => y);
+    const x = Math.min(...xs), y = Math.min(...ys);
+    const width = Math.max(...xs) - x, height = Math.max(...ys) - y;
+    if (width < 30 || height < 30) return null;
+    const [startX, startY] = points[0];
+    const [endX, endY] = points[points.length - 1];
+    if (Math.hypot(endX - startX, endY - startY) > Math.min(width, height) * 0.45) return null;
+    const cx = x + width / 2, cy = y + height / 2;
+    const radii = points.map(([px, py]) => Math.hypot((px - cx) / (width / 2), (py - cy) / (height / 2)));
+    const averageRadius = radii.reduce((sum, radius) => sum + radius, 0) / radii.length;
+    const variation = radii.reduce((sum, radius) => sum + Math.abs(radius - averageRadius), 0) / radii.length;
+    return {
+        type: LayerType.Shape,
+        shape: variation < 0.18 ? ShapeType.Ellipse : ShapeType.Rectangle,
+        x, y, width, height, fill: undefined, stroke: color, strokeWidth: Math.max(2, Math.round(strokeWidth / 3)),
+    };
+};
 
 type SelectionFrame = {
     ids: string[];
@@ -159,12 +181,9 @@ export const Canvas = ({ boardId }: CanvasProps) => {
         scale: 1,
     });
 
-    const [lastUsedColor, setLastUsedColor] = useState<Color>({
-        r: 124,
-        g: 232,
-        b: 145,
-    });
+    const [lastUsedColor, setLastUsedColor] = useState<Color>({ r: 0, g: 0, b: 0 });
     const [penSize, setPenSize] = useState(8);
+    const [smartDrawing, setSmartDrawing] = useState(false);
     const BLACK: Color = { r: 0, g: 0, b: 0 };
     ;
 
@@ -184,7 +203,11 @@ export const Canvas = ({ boardId }: CanvasProps) => {
     }
 
 
+    type ClipboardItem = {
+        layer: Layer;
+    };
 
+    const [clipboard, setClipboard] = useState<ClipboardItem[] | null>(null);
 
     useDisableScrollBounce();
     const onWheel = useCallback((e: React.WheelEvent) => {
@@ -215,6 +238,57 @@ export const Canvas = ({ boardId }: CanvasProps) => {
         return id ? root.layers.get(id) : null;
     });
 
+    const copySelectedLayers = useMutation(({ storage, self }) => {
+        const selection = self.presence.selection;
+        if (!selection || selection.length === 0) return;
+
+        const liveLayers = storage.get("layers");
+
+        const copied: ClipboardItem[] = [];
+
+        for (const id of selection) {
+            const layer = liveLayers.get(id);
+            if (!layer) continue;
+
+
+            copied.push({
+                layer: layer.toObject() as Layer,
+            });
+        }
+
+        setClipboard(copied);
+    }, []);
+
+    const pasteLayers = useMutation(
+        ({ storage, setMyPresence }) => {
+            if (!clipboard || clipboard.length === 0) return;
+
+            const liveLayers = storage.get("layers");
+            const liveLayerIds = storage.get("layerIds");
+
+            if (liveLayers.size + clipboard.length > MAX_LAYERS) return;
+
+            const OFFSET = 20;
+            const newSelection: string[] = [];
+
+            for (const item of clipboard) {
+                const id = nanoid();
+
+                const clonedLayer: Layer = {
+                    ...item.layer,
+                    x: item.layer.x + OFFSET,
+                    y: item.layer.y + OFFSET,
+                };
+
+                liveLayerIds.push(id);
+                liveLayers.set(id, new LiveObject(clonedLayer));
+                newSelection.push(id);
+            }
+
+            setMyPresence({ selection: newSelection }, { addToHistory: true });
+        },
+        [clipboard]
+    );
 
     const duplicateSelectedLayers = useMutation(({ storage, self, setMyPresence }) => {
         const selected = self.presence.selection;
@@ -360,7 +434,7 @@ export const Canvas = ({ boardId }: CanvasProps) => {
                 height: 100,
             };
             const layerData = layerType === LayerType.Note
-                ? { ...baseLayer, fill: { r: 254, g: 202, b: 202 }, value: "", fontFamily: "kalam" as const, fontSize: 16, textAlign: "left" as const, verticalAlign: "top" as const, padding: 14 }
+                ? { ...baseLayer, fill: { r: 254, g: 202, b: 202 }, value: "", fontFamily: "mono" as const, fontSize: 16, textAlign: "left" as const, verticalAlign: "top" as const, padding: 14 }
                 : layerType === LayerType.Text
                     ? { ...baseLayer, fill: BLACK, value: "", textAlign: "center" as const, fontFamily: "mono" as const, fontWeight: "regular" as const }
                     : { ...baseLayer, fill: undefined, stroke: BLACK, strokeWidth: 2 };
@@ -528,19 +602,17 @@ export const Canvas = ({ boardId }: CanvasProps) => {
             return;
         }
         const id = nanoid();
+        const color = resolveColor(lastUsedColor);
+        const smartShape = smartDrawing ? recognizeSmartShape(pencilDraft, color, penSize) : null;
         liveLayers.set(
             id,
-            new LiveObject(penPointsToPathLayer(
-                pencilDraft,
-                resolveColor(lastUsedColor),
-                penSize,
-            ))
+            new LiveObject(smartShape ?? penPointsToPathLayer(pencilDraft, color, penSize))
         );
         const liveLayerIds = storage.get('layerIds');
         liveLayerIds.push(id);
         setMyPresence({ pencilDraft: null });
         setCanvasState({ mode: CanvasMode.Pencil });
-    }, [lastUsedColor, penSize])
+    }, [lastUsedColor, penSize, smartDrawing])
 
     const startDrawing = useMutation(({ setMyPresence }, point: Point, pressure: number) => {
         setMyPresence({
@@ -548,6 +620,19 @@ export const Canvas = ({ boardId }: CanvasProps) => {
             penColor: resolveColor(lastUsedColor),
         })
     }, [lastUsedColor])
+
+    const eraseLayer = useMutation(({ storage, setMyPresence }, layerId: string) => {
+        const layers = storage.get("layers");
+        const ids = storage.get("layerIds");
+        const layer = layers.get(layerId);
+        // The eraser is intentionally limited to freehand pencil strokes.
+        if (!layer || layer.get("type") !== LayerType.Path) return;
+        const index = ids.toImmutable().indexOf(layerId);
+        if (index === -1) return;
+        layers.delete(layerId);
+        ids.delete(index);
+        setMyPresence({ selection: [] }, { addToHistory: true });
+    }, []);
 
     const resizeSelectedLayer = useMutation(
         ({ storage }, point: Point) => {
@@ -937,6 +1022,11 @@ export const Canvas = ({ boardId }: CanvasProps) => {
 
     const onLayerPointerDown = useMutation(
         ({ storage, self, setMyPresence }, e: React.PointerEvent, layerId: string) => {
+            if (canvasState.mode === CanvasMode.Erasing) {
+                eraseLayer(layerId);
+                return;
+            }
+
             if (canvasState.mode === CanvasMode.Pencil || canvasState.mode === CanvasMode.Inserting) {
                 return;
             }
@@ -997,6 +1087,7 @@ export const Canvas = ({ boardId }: CanvasProps) => {
             camera,
             history,
             canvasState,
+            eraseLayer,
         ]
     );
 
@@ -1074,11 +1165,16 @@ export const Canvas = ({ boardId }: CanvasProps) => {
                 resetZoom={resetZoom}
                 penSize={penSize}
                 setPenSize={setPenSize}
+                penColor={lastUsedColor}
+                setPenColor={setLastUsedColor}
+                smartDrawing={smartDrawing}
+                setSmartDrawing={setSmartDrawing}
             />
 
             <SelectionTools
                 camera={camera}
                 setLastUsedColor={setLastUsedColor}
+                canvasState={canvasState}
             />
             <ShareActions id={boardId} />
             {canvasState.mode === CanvasMode.Inserting &&
@@ -1098,7 +1194,9 @@ export const Canvas = ({ boardId }: CanvasProps) => {
                     onPointerLeave={onPointerLeave}
                     style={{
                         cursor:
-                            canvasState.mode === CanvasMode.Inserting &&
+                            canvasState.mode === CanvasMode.Erasing
+                                ? 'url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2724%27 height=%2724%27 viewBox=%270 0 24 24%27 fill=%27none%27 stroke=%27%235b4713%27 stroke-width=%272%27 stroke-linecap=%27round%27 stroke-linejoin=%27round%27%3E%3Cpath d=%27m7 21-4-4 9.5-9.5 4 4L7 21Z%27/%3E%3Cpath d=%27m13.5 6.5 4 4%27/%3E%3Cpath d=%27M3 17h4%27/%3E%3C/svg%3E") 4 20, auto'
+                                : canvasState.mode === CanvasMode.Inserting &&
                                 canvasState.layertype === LayerType.Image
                                 ? "crosshair"
                                 : "default",

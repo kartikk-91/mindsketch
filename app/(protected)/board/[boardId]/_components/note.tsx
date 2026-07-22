@@ -10,6 +10,9 @@ import {
   Nunito,
   JetBrains_Mono,
   Lora,
+  Caveat,
+  Poppins,
+  Playfair_Display,
 } from "next/font/google";
 
 const kalam = Kalam({ subsets: ["latin"], weight: ["400"] });
@@ -17,6 +20,9 @@ const inter = Inter({ subsets: ["latin"], weight: ["400", "700"] });
 const nunito = Nunito({ subsets: ["latin"], weight: ["400", "700"] });
 const mono = JetBrains_Mono({ subsets: ["latin"], weight: ["400", "700"] });
 const serif = Lora({ subsets: ["latin"], weight: ["400", "700"] });
+const caveat = Caveat({ subsets: ["latin"], weight: ["400", "700"] });
+const poppins = Poppins({ subsets: ["latin"], weight: ["400", "700"] });
+const playfair = Playfair_Display({ subsets: ["latin"], weight: ["400", "700"] });
 
 const fonts: Record<NoteFontFamily, { className: string }> = {
   kalam,
@@ -24,6 +30,9 @@ const fonts: Record<NoteFontFamily, { className: string }> = {
   nunito,
   mono,
   serif,
+  caveat,
+  poppins,
+  playfair,
 };
 
 const tint = (color: Color, amount: number): Color => ({
@@ -63,9 +72,10 @@ export function Note({
     fill,
     value,
     rotation = 0,
-    fontFamily = "kalam",
+    fontFamily = "mono",
     fontSize = 16,
     fontWeight = "regular",
+    textAlign = "left",
     padding = 14,
     opacity = 1,
   } = layer;
@@ -132,6 +142,7 @@ export function Note({
               fontSize,
               fontWeight: fontWeight === "bold" ? 700 : 400,
               lineHeight: 1.55,
+              textAlign,
               color: getContrastingTextColor(backgroundColor),
             }}
           />

@@ -3,20 +3,28 @@
 import { cn, ColorToCSS } from "@/lib/utils";
 import { useMutation } from "@liveblocks/react";
 import { NoteFontFamily, TextLayer } from "@/types/canvas";
-import {
-  JetBrains_Mono,
-} from "next/font/google";
+import { Caveat, Inter, JetBrains_Mono, Kalam, Lora, Nunito, Playfair_Display, Poppins } from "next/font/google";
 import ContentEditable, { ContentEditableEvent } from "react-contenteditable";
 import { useEffect, useRef } from "react";
 
 const mono = JetBrains_Mono({ subsets: ["latin"], weight: ["400", "700"] });
+const inter = Inter({ subsets: ["latin"], weight: ["400", "700"] });
+const kalam = Kalam({ subsets: ["latin"], weight: ["400"] });
+const nunito = Nunito({ subsets: ["latin"], weight: ["400", "700"] });
+const serif = Lora({ subsets: ["latin"], weight: ["400", "700"] });
+const caveat = Caveat({ subsets: ["latin"], weight: ["400", "700"] });
+const poppins = Poppins({ subsets: ["latin"], weight: ["400", "700"] });
+const playfair = Playfair_Display({ subsets: ["latin"], weight: ["400", "700"] });
 
 const fonts: Record<NoteFontFamily, { className: string }> = {
-  kalam: mono,
-  inter: mono,
-  nunito: mono,
+  kalam,
+  inter,
+  nunito,
   mono,
-  serif: mono,
+  serif,
+  caveat,
+  poppins,
+  playfair,
 };
 
 interface TextProps {
@@ -62,8 +70,9 @@ export const Text = ({
     value,
     rotation = 0,
     textAlign = "center",
-    fontFamily = "kalam",
+    fontFamily = "mono",
     fontWeight = "regular",
+    opacity = 1,
   } = layer;
 
   const cx = x + width / 2;
@@ -123,6 +132,7 @@ export const Text = ({
             color: fill ? ColorToCSS(fill) : "#000",
             lineHeight: 1.25,
             fontWeight: fontWeight === "bold" ? 700 : 400,
+            opacity,
           }}
         />
       </foreignObject>

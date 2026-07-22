@@ -1,11 +1,10 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable @typescript-eslint/no-unused-vars, @typescript-eslint/no-explicit-any */
 "use client";
 
 import { useSelectionBounds } from "@/hooks/use-selection-bounds";
-import { Camera, Color, LayerType, NoteFontFamily, ShapeType, Side } from "@/types/canvas";
+import { Camera, CanvasMode, CanvasState, Color, LayerType, NoteFontFamily, ShapeType, Side } from "@/types/canvas";
 import { useSelf, useMutation, useStorage } from "@liveblocks/react";
-import { memo } from "react";
+import { memo, useEffect, useState } from "react";
 import { ColorPicker } from "./color-picker";
 import { useDeleteLayers } from "@/hooks/use-delete-layers";
 import { Button } from "@/components/ui/button";
@@ -18,7 +17,9 @@ import {
   AlignCenter,
   AlignRight,
   Bold,
-  ChevronDown,
+  Palette,
+  Droplets,
+  Type,
 } from "lucide-react";
 import { ColorToCSS } from "@/lib/utils";
 
@@ -36,6 +37,9 @@ const FONT_OPTIONS: { value: NoteFontFamily; label: string }[] = [
   { value: "nunito", label: "Rounded" },
   { value: "serif", label: "Serif" },
   { value: "mono", label: "Mono" },
+  { value: "caveat", label: "Caveat" },
+  { value: "poppins", label: "Poppins" },
+  { value: "playfair", label: "Playfair" },
 ];
 
 const SIZE_PRESETS = [
@@ -51,11 +55,13 @@ const DEFAULT_STROKE: Color = { r: 0, g: 0, b: 0 };
 interface SelectionToolsProps {
   camera: Camera;
   setLastUsedColor: (color: Color) => void;
+  canvasState: CanvasState;
 }
 
 export const SelectionTools = memo(
-  ({ camera, setLastUsedColor }: SelectionToolsProps) => {
+  ({ camera, setLastUsedColor, canvasState }: SelectionToolsProps) => {
     const selection = useSelf((me) => me.presence.selection);
+    const selectedId = selection?.[0];
     const selectionBounds = useSelectionBounds();
 
     const selectedLayer = useStorage((root) => {
@@ -86,8 +92,8 @@ export const SelectionTools = memo(
 
     const currentFontFamily: NoteFontFamily =
       isText ? (selectedLayer as any).fontFamily ?? "mono"
-      : isNote ? selectedLayer.fontFamily ?? "kalam"
-      : "kalam";
+      : isNote ? selectedLayer.fontFamily ?? "mono"
+      : "mono";
 
     const currentFontSize: number =
       isNote ? (typeof selectedLayer.fontSize === "number" ? selectedLayer.fontSize : 16) : 16;
@@ -293,183 +299,44 @@ export const SelectionTools = memo(
     );
 
     const deleteLayers = useDeleteLayers();
+    const [panel, setPanel] = useState<"color" | "opacity" | "text" | "connector" | null>(null);
 
-    if (!selectionBounds || !selectedLayer) return null;
+    useEffect(() => {
+      setPanel(null);
+    }, [selectedId]);
+
+    const canChangeColor = selectedLayer?.type !== LayerType.Image && (canFill || canStroke);
+
+    if (!selectionBounds || !selectedLayer || canvasState.mode !== CanvasMode.None) return null;
 
     return (
-      <div className="absolute bottom-0 left-1/2 z-30 flex -translate-x-1/2 items-center gap-4 rounded-t-2xl border border-b-0 border-neutral-200/80 bg-white/95 p-3 shadow-[0_-10px_30px_rgba(15,23,42,0.12)] backdrop-blur select-none">
-        <div className="flex min-w-24 flex-col gap-1 pr-2 mr-2 border-r border-neutral-200">
-          <div className="flex items-center justify-between text-xs text-neutral-500"><span>Opacity</span><span>{currentOpacity}%</span></div>
-          <input
-            aria-label="Element opacity"
-            type="range"
-            min="10"
-            max="100"
-            value={currentOpacity}
-            onChange={(event) => setOpacity(Number(event.target.value))}
-            className="h-1.5 w-24 cursor-pointer accent-neutral-900"
-          />
+      <div className="absolute bottom-0 left-1/2 z-30 flex -translate-x-1/2 select-none items-end">
+        <div className="relative">
+        <div className="flex items-center gap-1 border border-b-0 border-neutral-200/90 bg-white/95 px-5 py-2.5 shadow-[0_-10px_30px_rgba(15,23,42,0.12)] backdrop-blur [clip-path:polygon(5%_0,95%_0,100%_100%,0_100%)]">
+          {canChangeColor && <Hint label="Color">
+            <button onClick={() => setPanel(panel === "color" ? null : "color")} className="flex h-11 w-11 flex-col items-center justify-center rounded-xl text-neutral-700 transition hover:bg-neutral-100"><Palette className="h-[18px] w-[18px]" /><span className="mt-0.5 text-[9px] font-medium">Color</span></button>
+          </Hint>}
+          <Hint label={`Opacity: ${currentOpacity}%`}>
+            <button onClick={() => setPanel(panel === "opacity" ? null : "opacity")} className="flex h-11 w-11 flex-col items-center justify-center rounded-xl text-neutral-700 transition hover:bg-neutral-100"><Droplets className="h-[18px] w-[18px]" /><span className="mt-0.5 text-[9px] font-medium">Opacity</span></button>
+          </Hint>
+          {isBoundArrow && <Hint label="Connector ports"><button onClick={() => setPanel(panel === "connector" ? null : "connector")} className="flex h-11 w-11 flex-col items-center justify-center rounded-xl text-neutral-700 transition hover:bg-neutral-100"><span className="text-lg">↔</span><span className="mt-0.5 text-[9px] font-medium">Ports</span></button></Hint>}
+          {hasText && <>
+            <Hint label="Text settings"><button onClick={() => setPanel(panel === "text" ? null : "text")} className="flex h-11 w-11 flex-col items-center justify-center rounded-xl text-neutral-700 transition hover:bg-neutral-100"><Type className="h-[18px] w-[18px]" /><span className="mt-0.5 text-[9px] font-medium">Text</span></button></Hint>
+            <Hint label="Bold"><button onClick={toggleFontWeight} className={`flex h-11 w-11 flex-col items-center justify-center rounded-xl transition ${currentFontWeight === "bold" ? "bg-neutral-900 text-white" : "text-neutral-700 hover:bg-neutral-100"}`}><Bold className="h-[18px] w-[18px]" /><span className="mt-0.5 text-[9px] font-medium">Bold</span></button></Hint>
+            <Hint label={`Align: ${currentTextAlign}`}><button onClick={toggleTextAlign} className="flex h-11 w-11 flex-col items-center justify-center rounded-xl text-neutral-700 transition hover:bg-neutral-100">{currentTextAlign === "left" && <AlignLeft className="h-[18px] w-[18px]" />}{currentTextAlign === "center" && <AlignCenter className="h-[18px] w-[18px]" />}{currentTextAlign === "right" && <AlignRight className="h-[18px] w-[18px]" />}<span className="mt-0.5 text-[9px] font-medium">Align</span></button></Hint>
+          </>}
+          <span className="mx-1 h-6 w-px bg-neutral-200" />
+          <Hint label="Bring to Front"><button onClick={moveToFront} className="flex h-11 w-11 flex-col items-center justify-center rounded-xl text-neutral-700 transition hover:bg-neutral-100"><BringToFront className="h-[18px] w-[18px]" /><span className="mt-0.5 text-[9px] font-medium">Front</span></button></Hint>
+          <Hint label="Send to Back"><button onClick={moveToBack} className="flex h-11 w-11 flex-col items-center justify-center rounded-xl text-neutral-700 transition hover:bg-neutral-100"><SendToBack className="h-[18px] w-[18px]" /><span className="mt-0.5 text-[9px] font-medium">Back</span></button></Hint>
+          <span className="mx-1 h-6 w-px bg-neutral-200" />
+          <Hint label="Delete"><button onClick={deleteLayers} className="flex h-11 w-11 flex-col items-center justify-center rounded-xl text-[#D65A43] transition hover:bg-[#FFF0ED]"><Trash2 className="h-[18px] w-[18px]" /><span className="mt-0.5 text-[9px] font-medium">Delete</span></button></Hint>
         </div>
-
-        {isBoundArrow && (
-          <div className="flex gap-2 border-r border-neutral-200 pr-3">
-            <label className="flex flex-col gap-1 text-[11px] text-neutral-500">Start
-              <select value={(selectedLayer as any).startSide ?? Side.Right} onChange={(e) => setConnectionSide("startSide", Number(e.target.value) as Side)} className="rounded-md border border-neutral-200 bg-white px-1.5 py-1 text-xs text-neutral-700">
-                <option value={Side.Top}>Top</option><option value={Side.Right}>Right</option><option value={Side.Bottom}>Bottom</option><option value={Side.Left}>Left</option>
-              </select>
-            </label>
-            <label className="flex flex-col gap-1 text-[11px] text-neutral-500">End
-              <select value={(selectedLayer as any).endSide ?? Side.Left} onChange={(e) => setConnectionSide("endSide", Number(e.target.value) as Side)} className="rounded-md border border-neutral-200 bg-white px-1.5 py-1 text-xs text-neutral-700">
-                <option value={Side.Top}>Top</option><option value={Side.Right}>Right</option><option value={Side.Bottom}>Bottom</option><option value={Side.Left}>Left</option>
-              </select>
-            </label>
-          </div>
-        )}
-        {canFill && !isLineOrArrow && (
-          <div className="flex flex-col gap-1 pr-2 mr-2 border-r border-neutral-200">
-            <span className="text-xs text-neutral-500">Color</span>
-            <ColorPicker onChange={setFillColor} />
-          </div>
-        )}
-
-        {canStroke && (
-          <div className="flex flex-col gap-1 pr-2 mr-2 border-r border-neutral-200">
-            <span className="text-xs text-neutral-500">Stroke</span>
-
-            <div className="grid grid-rows-2 gap-2">
-              <button
-                title="Transparent border"
-                className="w-8 h-8 rounded-md border border-neutral-300
-                           bg-[linear-gradient(45deg,#ccc_25%,transparent_25%,transparent_50%,#ccc_50%,#ccc_75%,transparent_75%,transparent)]
-                           bg-[length:8px_8px]"
-                onClick={() => setStrokeColor(null)}
-              />
-
-              <label className="relative w-8 h-8 rounded-md border border-neutral-300 cursor-pointer">
-                <input
-                  type="color"
-                  className="absolute inset-0 opacity-0 cursor-pointer"
-                  value={currentStroke ? ColorToCSS(currentStroke) : "#000000"}
-                  onChange={(e) => {
-                    const hex = e.target.value;
-                    const r = parseInt(hex.slice(1, 3), 16);
-                    const g = parseInt(hex.slice(3, 5), 16);
-                    const b = parseInt(hex.slice(5, 7), 16);
-                    setStrokeColor({ r, g, b });
-                  }}
-                />
-                <div
-                  className="w-full h-full rounded-md"
-                  style={{
-                    backgroundColor: currentStroke
-                      ? ColorToCSS(currentStroke)
-                      : "transparent",
-                  }}
-                />
-              </label>
-            </div>
-          </div>
-        )}
-
-        
-        {hasText && (
-          <div className="flex flex-col gap-1.5 pr-2 mr-2 border-r border-neutral-200">
-            
-            <div className="flex items-center gap-2">
-              
-              {hasText ? (
-                <div className="flex flex-col gap-1">
-                  <span className="text-xs text-neutral-500">Font</span>
-                  <div className="relative">
-                    <select
-                      value={currentFontFamily}
-                      onChange={(e) => setFontFamily(e.target.value as NoteFontFamily)}
-                      className="appearance-none bg-white border border-neutral-300 rounded-md px-2 py-1 pr-6 text-xs font-medium text-neutral-700 cursor-pointer hover:border-neutral-400 focus:outline-none focus:ring-2 focus:ring-neutral-400"
-                    >
-                      {FONT_OPTIONS.map((opt) => (
-                        <option key={opt.value} value={opt.value}>
-                          {opt.label}
-                        </option>
-                      ))}
-                    </select>
-                    <ChevronDown className="absolute right-1.5 top-1/2 -translate-y-1/2 h-3 w-3 text-neutral-400 pointer-events-none" />
-                  </div>
-                </div>
-              ) : null}
-
-              <div className="flex flex-col gap-1">
-                <span className="text-xs text-neutral-500">Bold</span>
-                <button
-                  onClick={toggleFontWeight}
-                  className={`p-1.5 rounded-md border transition-colors ${
-                    currentFontWeight === "bold"
-                      ? "bg-neutral-900 text-white border-neutral-900"
-                      : "bg-white text-neutral-600 border-neutral-300 hover:border-neutral-400"
-                  }`}
-                >
-                  <Bold className="h-3.5 w-3.5" />
-                </button>
-              </div>
-            </div>
-
-            
-            {isNote && (
-              <div className="flex flex-col gap-1">
-                <span className="text-xs text-neutral-500">Size</span>
-                <div className="flex gap-0.5">
-                  {SIZE_PRESETS.map((preset) => (
-                    <button
-                      key={preset.value}
-                      onClick={() => setFontSize(preset.value)}
-                      className={`px-1.5 py-1 text-[10px] font-medium rounded-md border transition-colors ${
-                        currentFontSize === preset.value
-                          ? "bg-neutral-900 text-white border-neutral-900"
-                          : "bg-white text-neutral-600 border-neutral-300 hover:border-neutral-400"
-                      }`}
-                    >
-                      {preset.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        <div className="flex flex-col gap-y-0.5">
-          <Hint label="Bring to Front">
-            <Button variant="board" size="icon" onClick={moveToFront}>
-              <BringToFront />
-            </Button>
-          </Hint>
-
-          <Hint label="Send to Back">
-            <Button variant="board" size="icon" onClick={moveToBack}>
-              <SendToBack />
-            </Button>
-          </Hint>
-        </div>
-
-        <div className="flex flex-col items-center pl-2 ml-2 border-l h-full border-neutral-200 gap-1">
-          {(isText || isNote) && (
-            <Hint label={`Align: ${currentTextAlign}`}>
-              <Button
-                variant="board"
-                size="icon"
-                onClick={toggleTextAlign}
-              >
-                {currentTextAlign === "left" && <AlignLeft />}
-                {currentTextAlign === "center" && <AlignCenter />}
-                {currentTextAlign === "right" && <AlignRight />}
-              </Button>
-            </Hint>
-          )}
-
-          <Hint label="Delete">
-            <Button variant="board" size="icon" onClick={deleteLayers}>
-              <Trash2 />
-            </Button>
-          </Hint>
+          {panel && <div className="absolute bottom-[calc(100%+10px)] left-1/2 z-50 w-max max-w-[calc(100vw-32px)] -translate-x-1/2 rounded-2xl border border-neutral-200 bg-white p-3 shadow-xl">
+            {panel === "opacity" && <div className="w-48"><div className="mb-2 flex justify-between text-xs font-medium text-neutral-600"><span>Opacity</span><span>{currentOpacity}%</span></div><input aria-label="Element opacity" type="range" min="10" max="100" value={currentOpacity} onChange={(event) => setOpacity(Number(event.target.value))} className="h-1.5 w-full cursor-pointer accent-neutral-900" /></div>}
+            {panel === "color" && <div className="flex gap-4"><div>{canFill && !isLineOrArrow && <><p className="mb-2 text-xs font-medium text-neutral-600">Fill</p><ColorPicker onChange={setFillColor} /></>}</div>{canStroke && <div><p className="mb-2 text-xs font-medium text-neutral-600">Stroke</p><label className="relative flex h-9 w-9 cursor-pointer items-center justify-center rounded-xl border border-neutral-200"><span className="h-5 w-5 rounded-lg" style={{ backgroundColor: currentStroke ? ColorToCSS(currentStroke) : "transparent" }} /><input type="color" className="absolute inset-0 cursor-pointer opacity-0" value={currentStroke ? ColorToCSS(currentStroke) : "#000000"} onChange={(e) => { const hex = e.target.value; setStrokeColor({ r: parseInt(hex.slice(1, 3), 16), g: parseInt(hex.slice(3, 5), 16), b: parseInt(hex.slice(5, 7), 16) }); }} /></label></div>}</div>}
+            {panel === "text" && <div className="w-64"><p className="mb-2 text-xs font-medium text-neutral-600">Typeface</p><div className="grid grid-cols-2 gap-1">{FONT_OPTIONS.map((option) => <button key={option.value} onClick={() => setFontFamily(option.value)} className={`rounded-xl px-3 py-2 text-left text-xs transition ${currentFontFamily === option.value ? "bg-[#FFF1BF] font-semibold text-[#5b4713]" : "bg-neutral-50 text-neutral-700 hover:bg-[#FFF8E7]"}`}>{option.label}</button>)}</div>{isNote && <><p className="mb-2 mt-3 text-xs font-medium text-neutral-600">Size</p><div className="flex gap-1">{SIZE_PRESETS.map((preset) => <button key={preset.value} onClick={() => setFontSize(preset.value)} className={`rounded-lg px-2 py-1 text-xs ${currentFontSize === preset.value ? "bg-[#FFF1BF] text-[#5b4713]" : "bg-neutral-100 text-neutral-700"}`}>{preset.label}</button>)}</div></>}</div>}
+            {panel === "connector" && <div className="flex gap-3 text-sm"><label>Start <select value={(selectedLayer as any).startSide ?? Side.Right} onChange={(e) => setConnectionSide("startSide", Number(e.target.value) as Side)}><option value={Side.Top}>Top</option><option value={Side.Right}>Right</option><option value={Side.Bottom}>Bottom</option><option value={Side.Left}>Left</option></select></label><label>End <select value={(selectedLayer as any).endSide ?? Side.Left} onChange={(e) => setConnectionSide("endSide", Number(e.target.value) as Side)}><option value={Side.Top}>Top</option><option value={Side.Right}>Right</option><option value={Side.Bottom}>Bottom</option><option value={Side.Left}>Left</option></select></label></div>}
+          </div>}
         </div>
       </div>
     );

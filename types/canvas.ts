@@ -106,7 +106,10 @@ export type NoteFontFamily =
   | "inter"
   | "nunito"
   | "mono"
-  | "serif";
+  | "serif"
+  | "caveat"
+  | "poppins"
+  | "playfair";
 
 export type NoteLayer = {
   type: LayerType.Note;
@@ -231,6 +234,9 @@ export type CanvasState =
         mode: CanvasMode.Pencil;
     }
     | {
+        mode: CanvasMode.Erasing;
+    }
+    | {
         mode: CanvasMode.Connecting;
         sourceId?: string;
     };
@@ -243,6 +249,7 @@ export enum CanvasMode {
     Inserting,
     Resizing,
     Pencil,
+    Erasing,
     Rotating,
     Connecting,
 }
