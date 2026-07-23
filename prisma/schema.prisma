@@ -1,7 +1,6 @@
-
 generator client {
   provider = "prisma-client"
-  output   = "../src/generated/prisma"
+  output   = "../generated/prisma"
 }
 
 datasource db {
@@ -9,19 +8,19 @@ datasource db {
 }
 
 model Board {
-  id          String   @id @default(cuid())
-  title       String
-  orgId       String
-  authorId    String
-  authorName  String
-  imageUrl    String
-  templateId  String?
+  id                String   @id @default(cuid())
+  title             String
+  orgId             String
+  authorId          String
+  authorName        String
+  imageUrl          String
+  templateId        String?
   backgroundPattern String?
-  colorTheme  String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  colorTheme        String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 
-  favorites   UserFavorite[]
+  favorites UserFavorite[]
 
   @@index([orgId])
   @@index([authorId])
@@ -34,7 +33,7 @@ model UserFavorite {
   boardId   String
   createdAt DateTime @default(now())
 
-  board     Board    @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  board Board @relation(fields: [boardId], references: [id], onDelete: Cascade)
 
   @@unique([userId, boardId, orgId])
   @@index([boardId])
