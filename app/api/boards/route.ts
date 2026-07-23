@@ -2,26 +2,22 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth, clerkClient } from '@clerk/nextjs/server'
 import { prisma } from '@/lib/prisma'
 import { resolveBoardAppearance } from '@/lib/board-appearance'
+import fs from 'fs'
+import path from 'path'
 
-const PLACEHOLDER_IMAGES = [
-  '/placeholder/1.svg',
-  '/placeholder/2.svg',
-  '/placeholder/3.svg',
-  '/placeholder/4.svg',
-  '/placeholder/5.svg',
-  '/placeholder/6.svg',
-  '/placeholder/7.svg',
-  '/placeholder/8.svg',
-  '/placeholder/9.svg',
-  '/placeholder/10.svg',
-  '/placeholder/11.svg',
-  '/placeholder/12.svg',
-  '/placeholder/13.svg',
-  '/placeholder/14.svg',
-  '/placeholder/15.svg',
-  '/placeholder/16.svg',
-  '/placeholder/17.svg',
-]
+const placeholderDir = path.join(process.cwd(), 'public', 'placeholder')
+
+function getRandomPlaceholderImage() {
+  const images = fs
+    .readdirSync(placeholderDir)
+    .filter((file) => /\.(png|jpg|jpeg|webp|svg)$/i.test(file))
+
+  if (images.length === 0) {
+    throw new Error('No placeholder images found.')
+  }
+
+  return `/placeholder/${images[Math.floor(Math.random() * images.length)]}`
+}
 
 export async function GET(req: NextRequest) {
   try {
@@ -58,31 +54,22 @@ export async function GET(req: NextRequest) {
       )
     }
 
-    let boards
-
-    if (search) {
-      boards = await prisma.board.findMany({
-        where: {
-          orgId,
-          title: {
-            contains: search,
-            mode: 'insensitive',
-          },
-        },
-        orderBy: {
-          updatedAt: 'desc',
-        },
-      })
-    } else {
-      boards = await prisma.board.findMany({
-        where: {
-          orgId,
-        },
-        orderBy: {
-          updatedAt: 'desc',
-        },
-      })
-    }
+    const boards = await prisma.board.findMany({
+      where: {
+        orgId,
+        ...(search
+          ? {
+              title: {
+                contains: search,
+                mode: 'insensitive',
+              },
+            }
+          : {}),
+      },
+      orderBy: {
+        updatedAt: 'desc',
+      },
+    })
 
     const boardsWithFavorites = await Promise.all(
       boards.map(async (board) => {
@@ -95,14 +82,21 @@ export async function GET(req: NextRequest) {
             },
           },
         })
-        return { ...board, isFavorite: !!favorite }
+
+        return {
+          ...board,
+          isFavorite: !!favorite,
+        }
       })
     )
 
     return NextResponse.json(boardsWithFavorites)
   } catch (error) {
     console.error('Error fetching boards:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    )
   }
 }
 
@@ -125,14 +119,18 @@ export async function POST(req: NextRequest) {
 
     const client = await clerkClient()
     const user = await client.users.getUser(userId)
-    const imageUrl =
-      PLACEHOLDER_IMAGES[Math.floor(Math.random() * PLACEHOLDER_IMAGES.length)]
+
+    const imageUrl = getRandomPlaceholderImage()
 
     const authorName =
       user.firstName && user.lastName
         ? `${user.firstName} ${user.lastName}`
         : user.firstName || user.username || 'Unknown'
-    const appearance = resolveBoardAppearance(backgroundPattern, colorTheme)
+
+    const appearance = resolveBoardAppearance(
+      backgroundPattern,
+      colorTheme
+    )
 
     const board = await prisma.board.create({
       data: {
@@ -150,6 +148,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(board, { status: 201 })
   } catch (error) {
     console.error('Error creating board:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    )
   }
 }

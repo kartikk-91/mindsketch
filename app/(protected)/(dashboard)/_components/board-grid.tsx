@@ -107,7 +107,7 @@ const GridCard = ({ board }: { board: Board }) => {
       
       <div className="relative aspect-[16/10] w-full overflow-hidden bg-[#F1FEE1]">
         <Image
-          src={"/placeholder/1.png"}
+          src={board.imageUrl}
           alt={board.title}
           fill
           className="object-cover transition-transform duration-300 group-hover:scale-[1.03]"
