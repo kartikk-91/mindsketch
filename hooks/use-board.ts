@@ -1,4 +1,5 @@
 import useSWR from "swr";
+import { type BackgroundPattern, type ColorTheme } from "@/lib/board-appearance";
 
 interface Board {
   id: string;
@@ -11,6 +12,8 @@ interface Board {
   orgId: string;
   isFavorite: boolean;
   templateId?: string | null;
+  backgroundPattern?: BackgroundPattern | null;
+  colorTheme?: ColorTheme | null;
 }
 
 export class BoardRequestError extends Error {

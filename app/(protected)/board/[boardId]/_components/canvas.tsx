@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
@@ -24,6 +25,7 @@ import { useDisableScrollBounce } from "@/hooks/use-disable-scroll-bounce";
 import { useDeleteLayers } from "@/hooks/use-delete-layers";
 import ShareActions from "./share-actions";
 import { recognizeSmartShape } from "@/lib/smart-shapes";
+import { boardThemes, type BackgroundPattern, type ColorTheme } from "@/lib/board-appearance";
 
 
 
@@ -200,8 +202,10 @@ const syncBoundArrows = (layers: any, ids: readonly string[]) => {
 
 interface CanvasProps {
     boardId: string;
+    backgroundPattern: BackgroundPattern;
+    colorTheme: ColorTheme;
 }
-export const Canvas = ({ boardId }: CanvasProps) => {
+export const Canvas = ({ boardId, backgroundPattern, colorTheme }: CanvasProps) => {
    
     const longPressTimer = useRef<number | null>(null);
     const pressStart = useRef<Point | null>(null);
@@ -237,7 +241,8 @@ export const Canvas = ({ boardId }: CanvasProps) => {
         scale: 1,
     });
 
-    const [lastUsedColor, setLastUsedColor] = useState<Color>({ r: 0, g: 0, b: 0 });
+    const defaultStroke = boardThemes[colorTheme].defaultStroke;
+    const [lastUsedColor, setLastUsedColor] = useState<Color>(defaultStroke);
     const [penSize, setPenSize] = useState(8);
     const [smartDrawing, setSmartDrawing] = useState(false);
     const BLACK: Color = { r: 0, g: 0, b: 0 };
@@ -251,8 +256,8 @@ export const Canvas = ({ boardId }: CanvasProps) => {
             !color ||
             (color.r === -1 && color.g === -1 && color.b === -1)
         ) {
-            setColor?.(BLACK);
-            return BLACK;
+            setColor?.(defaultStroke);
+            return defaultStroke;
         }
 
         return color;
@@ -448,12 +453,12 @@ export const Canvas = ({ boardId }: CanvasProps) => {
         const y = (window.innerHeight / 2 - camera.y) / camera.scale - height / 2;
         const id = nanoid();
         layers.set(id, new LiveObject({
-            type: LayerType.Text, x, y, width, height, fill: BLACK, value,
+            type: LayerType.Text, x, y, width, height, fill: defaultStroke, value,
             textAlign: "left", fontFamily: "inter", fontWeight: "regular", rotation: 0,
         }) as LiveObject<Layer>);
         storage.get("layerIds").push(id);
         setMyPresence({ selection: [id] }, { addToHistory: true });
-    }, [camera]);
+    }, [camera, defaultStroke]);
 
 
     useEffect(() => {
@@ -581,8 +586,8 @@ export const Canvas = ({ boardId }: CanvasProps) => {
             const layerData = layerType === LayerType.Note
                 ? { ...baseLayer, fill: { r: 254, g: 202, b: 202 }, value: "", fontFamily: "mono" as const, fontSize: 16, textAlign: "left" as const, verticalAlign: "top" as const, padding: 14 }
                 : layerType === LayerType.Text
-                    ? { ...baseLayer, fill: BLACK, value: "", textAlign: "center" as const, fontFamily: "mono" as const, fontWeight: "regular" as const }
-                    : { ...baseLayer, fill: undefined, stroke: BLACK, strokeWidth: 2 };
+                    ? { ...baseLayer, fill: defaultStroke, value: "", textAlign: "center" as const, fontFamily: "mono" as const, fontWeight: "regular" as const }
+                    : { ...baseLayer, fill: undefined, stroke: defaultStroke, strokeWidth: 2 };
             const layer = new LiveObject(layerData);
 
             liveLayerIds.push(layerId);
@@ -590,7 +595,7 @@ export const Canvas = ({ boardId }: CanvasProps) => {
             setMyPresence({ selection: [layerId] }, { addToHistory: true });
             setCanvasState({ mode: CanvasMode.None });
         },
-        []
+        [defaultStroke]
     );
 
 
@@ -643,7 +648,7 @@ export const Canvas = ({ boardId }: CanvasProps) => {
                 // rotation pivot on the visible stroke.
                 height: isCode ? 260 : isOneDimensional ? 0 : 80,
                 fill: isCode ? undefined : undefined,
-                stroke: isCode ? undefined : BLACK,
+                stroke: isCode ? undefined : defaultStroke,
                 strokeWidth: isCode ? undefined : 2,
                 rotation: 0,
                 value: isCode ? "const message = 'Start typing code';\nconsole.log(message);" : undefined,
@@ -655,7 +660,7 @@ export const Canvas = ({ boardId }: CanvasProps) => {
             setMyPresence({ selection: [id] }, { addToHistory: true });
             setCanvasState({ mode: CanvasMode.None });
         },
-        []
+        [defaultStroke]
     );
 
 
@@ -1138,7 +1143,7 @@ export const Canvas = ({ boardId }: CanvasProps) => {
             });
         }, LONG_PRESS_MS);
 
-    }, [camera, canvasState.mode, startDrawing]);
+    }, [camera, canvasState.mode, erasePathsNear, history, startDrawing]);
 
 
     const onPointerUp = useMutation(({ }, e) => {
@@ -1364,7 +1369,7 @@ export const Canvas = ({ boardId }: CanvasProps) => {
 
     return (
         <main
-            className="h-full w-full relative  bg-neutral-100 select-none"
+            className={`h-full w-full relative select-none ${colorTheme === "charcoal" || colorTheme === "midnight" ? "board-dark" : ""}`}
         >
             <Info boardId={boardId} />
             <Participants />
@@ -1420,7 +1425,7 @@ export const Canvas = ({ boardId }: CanvasProps) => {
                 >
                     <defs>
 
-                        <pattern
+                        {backgroundPattern !== "plain" && <pattern
                             id="grid-small"
                             width={24 * camera.scale}
                             height={24 * camera.scale}
@@ -1430,14 +1435,14 @@ export const Canvas = ({ boardId }: CanvasProps) => {
                             <path
                                 d="M 24 0 L 0 0 0 24"
                                 fill="none"
-                                stroke="rgba(0,0,0,0.04)"
+                                stroke={backgroundPattern === "graph" ? boardThemes[colorTheme].graphMinorPattern : boardThemes[colorTheme].pattern}
                                 strokeWidth={1 / camera.scale}
                             />
-                        </pattern>
+                        </pattern>}
 
 
 
-                        <pattern
+                        {backgroundPattern === "graph" && <pattern
                             id="grid-large"
                             width={120 * camera.scale}
                             height={120 * camera.scale}
@@ -1447,17 +1452,18 @@ export const Canvas = ({ boardId }: CanvasProps) => {
                             <path
                                 d="M 120 0 L 0 0 0 120"
                                 fill="none"
-                                stroke="rgba(0,0,0,0.07)"
+                                stroke={boardThemes[colorTheme].pattern}
                                 strokeWidth={1 / camera.scale}
                             />
-                        </pattern>
+                        </pattern>}
+
+                        {backgroundPattern === "dots" && <pattern id="board-dots" width={24 * camera.scale} height={24 * camera.scale} patternUnits="userSpaceOnUse" patternTransform={`translate(${camera.x}, ${camera.y})`}><circle cx="2" cy="2" r={1.25 / camera.scale} fill={boardThemes[colorTheme].pattern} /></pattern>}
 
                     </defs>
 
-                    <rect width="100%" height="100%" fill="url(#grid-small)" />
-
-
-                    <rect width="100%" height="100%" fill="url(#grid-large)" />
+                    <rect width="100%" height="100%" fill={boardThemes[colorTheme].canvas} />
+                    {backgroundPattern !== "plain" && <rect width="100%" height="100%" fill={backgroundPattern === "dots" ? "url(#board-dots)" : "url(#grid-small)"} />}
+                    {backgroundPattern === "graph" && <rect width="100%" height="100%" fill="url(#grid-large)" />}
 
                     <g
                         id="canvas-content"

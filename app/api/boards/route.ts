@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth, clerkClient } from '@clerk/nextjs/server'
 import { prisma } from '@/lib/prisma'
+import { resolveBoardAppearance } from '@/lib/board-appearance'
 
 const PLACEHOLDER_IMAGES = [
   '/placeholder/1.svg',
@@ -113,7 +114,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json()
-    const { orgId, title, templateId } = body
+    const { orgId, title, templateId, backgroundPattern, colorTheme } = body
 
     if (!orgId || !title) {
       return NextResponse.json(
@@ -131,6 +132,7 @@ export async function POST(req: NextRequest) {
       user.firstName && user.lastName
         ? `${user.firstName} ${user.lastName}`
         : user.firstName || user.username || 'Unknown'
+    const appearance = resolveBoardAppearance(backgroundPattern, colorTheme)
 
     const board = await prisma.board.create({
       data: {
@@ -140,6 +142,8 @@ export async function POST(req: NextRequest) {
         authorName,
         imageUrl,
         templateId,
+        backgroundPattern: appearance.backgroundPattern,
+        colorTheme: appearance.colorTheme,
       },
     })
 

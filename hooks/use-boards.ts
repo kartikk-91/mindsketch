@@ -1,4 +1,5 @@
 import useSWR from "swr";
+import { type BackgroundPattern, type ColorTheme } from "@/lib/board-appearance";
 
 interface Board {
   id: string;
@@ -10,6 +11,8 @@ interface Board {
   updatedAt: string;
   orgId: string;
   isFavorite: boolean;
+  backgroundPattern?: BackgroundPattern | null;
+  colorTheme?: ColorTheme | null;
 }
 
 interface BoardsQuery {

@@ -137,7 +137,7 @@ export const Toolbar = ({
   return (
     <>
       <div className="absolute top-1/2 left-4 z-20 -translate-y-1/2 flex flex-col gap-3">
-        <div className="relative flex flex-col items-center gap-1 rounded-2xl border border-neutral-200/80 bg-white/95 p-1.5 shadow-[0_12px_32px_rgba(15,23,42,0.12)] backdrop-blur">
+        <div className="board-surface relative flex flex-col items-center gap-1 rounded-2xl border border-neutral-200/80 bg-white/95 p-1.5 shadow-[0_12px_32px_rgba(15,23,42,0.12)] backdrop-blur">
           <ToolButton
             label="Select"
             icon={MousePointer2}
@@ -193,7 +193,7 @@ export const Toolbar = ({
               <div
                 className="
                 absolute left-full ml-4 -top-12
-                bg-white rounded-md shadow-lg
+                board-surface bg-white rounded-md shadow-lg
                 p-2 z-50
                 grid grid-cols-4 gap-1
                 w-[216px]
@@ -251,20 +251,20 @@ export const Toolbar = ({
             isActive={canvasState.mode === CanvasMode.Pencil}
           />
           <ToolButton
-            label="Connect shapes"
+            label="Connect"
             icon={GitFork}
             onClick={() => setCanvasState({ mode: CanvasMode.Connecting })}
             isActive={canvasState.mode === CanvasMode.Connecting}
           />
         </div>
 
-        <div className="flex flex-col items-center rounded-2xl border border-neutral-200/80 bg-white/95 p-1.5 shadow-[0_12px_32px_rgba(15,23,42,0.1)] backdrop-blur">
+        <div className="board-surface flex flex-col items-center rounded-2xl border border-neutral-200/80 bg-white/95 p-1.5 shadow-[0_12px_32px_rgba(15,23,42,0.1)] backdrop-blur">
           <ToolButton label="Undo" icon={Undo2} onClick={undo} isDisabled={!canUndo} />
           <ToolButton label="Redo" icon={Redo2} onClick={redo} isDisabled={!canRedo} />
         </div>
       </div>
       {(canvasState.mode === CanvasMode.Pencil || canvasState.mode === CanvasMode.Erasing) && (
-        <div className="absolute bottom-0 left-1/2 z-30 flex -translate-x-1/2 items-center gap-3 border border-b-0 border-neutral-200/80 bg-white/95 px-5 py-3 shadow-[0_-10px_30px_rgba(15,23,42,0.14)] backdrop-blur [clip-path:polygon(7%_0,93%_0,100%_100%,0_100%)]">
+        <div className="board-surface absolute bottom-5 left-1/2 z-30 flex -translate-x-1/2 items-center gap-3 rounded-2xl border border-neutral-200/80 bg-white/95 px-5 py-3 shadow-[0_10px_30px_rgba(15,23,42,0.14)] backdrop-blur">
           <div className="flex rounded-xl bg-neutral-100 p-1">
             <button aria-label="Pen" onClick={() => setCanvasState({ mode: CanvasMode.Pencil })} className={`flex h-9 w-9 items-center justify-center rounded-lg transition ${canvasState.mode === CanvasMode.Pencil ? "bg-[#FFF1BF] text-[#5b4713] shadow-sm" : "text-neutral-600 hover:bg-white"}`}><Pencil className="h-[18px] w-[18px]" /></button>
             <button aria-label="Erase pencil strokes" onClick={() => setCanvasState({ mode: CanvasMode.Erasing })} className={`flex h-9 w-9 items-center justify-center rounded-lg transition ${canvasState.mode === CanvasMode.Erasing ? "bg-[#FFF1BF] text-[#5b4713] shadow-sm" : "text-neutral-600 hover:bg-white"}`}><Eraser className="h-[18px] w-[18px]" /></button>
@@ -281,7 +281,7 @@ export const Toolbar = ({
                 max="24"
                 value={penSize}
                 onChange={(event) => setPenSize(Number(event.target.value))}
-                className="h-1.5 w-36 cursor-pointer accent-neutral-900"
+                className="board-range h-1.5 w-36 cursor-pointer accent-neutral-900"
               />
             </div>
             <label className="relative flex h-9 w-9 cursor-pointer items-center justify-center overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-sm" title="Pen color">
@@ -297,17 +297,17 @@ export const Toolbar = ({
                 className="absolute inset-0 cursor-pointer opacity-0"
               />
             </label>
-            <button onClick={() => setSmartDrawing(!smartDrawing)} className={`flex h-9 items-center gap-1.5 rounded-xl px-2.5 text-xs font-medium transition ${smartDrawing ? "bg-[#FFF1BF] text-[#5b4713]" : "bg-[#FFF8E7] text-neutral-600 hover:bg-[#FFF1BF]"}`} title="Turn rough closed shapes into clean shapes"><WandSparkles className="h-4 w-4" />Smart shapes</button>
+            <button onClick={() => setSmartDrawing(!smartDrawing)} className={`smart-shapes-toggle ${smartDrawing ? "smart-shapes-toggle--active" : ""} flex h-9 items-center gap-1.5 rounded-xl px-2.5 text-xs font-medium transition ${smartDrawing ? "bg-[#FFF1BF] text-[#5b4713]" : "bg-[#FFF8E7] text-neutral-600 hover:bg-[#FFF1BF]"}`} title="Turn rough closed shapes into clean shapes"><WandSparkles className="h-4 w-4" />Smart shapes</button>
           </>}
           {canvasState.mode === CanvasMode.Erasing && <p className="px-2 text-sm font-medium text-neutral-600">Sweep over pencil strokes to erase</p>}
         </div>
       )}
       {canvasState.mode === CanvasMode.Connecting && (
-        <div className="absolute top-4 left-1/2 z-30 -translate-x-1/2 rounded-2xl border border-neutral-200/80 bg-white/95 px-4 py-3 text-sm font-medium text-neutral-700 shadow-[0_10px_30px_rgba(15,23,42,0.14)] backdrop-blur">
+        <div className="board-surface absolute top-4 left-1/2 z-30 -translate-x-1/2 rounded-2xl border border-neutral-200/80 bg-white/95 px-4 py-3 text-sm font-medium text-neutral-700 shadow-[0_10px_30px_rgba(15,23,42,0.14)] backdrop-blur">
           {canvasState.sourceId ? "Choose a second shape to connect" : "Choose the first shape to connect"}
         </div>
       )}
-      <div className="absolute bottom-5 right-4 flex flex-col items-center rounded-2xl border border-neutral-200/80 bg-white/95 p-1.5 shadow-[0_12px_32px_rgba(15,23,42,0.1)] backdrop-blur">
+      <div className="board-surface absolute bottom-5 right-4 flex flex-col items-center rounded-2xl border border-neutral-200/80 bg-white/95 p-1.5 shadow-[0_12px_32px_rgba(15,23,42,0.1)] backdrop-blur">
         <ToolButton
           label="Zoom In"
           icon={ZoomIn}

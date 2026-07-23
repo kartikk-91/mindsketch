@@ -1,12 +1,16 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { useSWRConfig } from "swr";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { boardsKey } from "./use-boards";
+import { type BackgroundPattern, type ColorTheme } from "@/lib/board-appearance";
 
 interface CreateBoardPayload {
   orgId: string;
   title: string;
   templateId?: string;
+  backgroundPattern?: BackgroundPattern;
+  colorTheme?: ColorTheme;
 }
 
 export function useCreateBoard() {

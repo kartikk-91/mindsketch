@@ -86,11 +86,11 @@ const ShareActions = ({ id }: ShareActionProps) => {
       </div>
 
     
-            <div className="hidden md:flex h-14 items-center gap-1 rounded-xl bg-white/90 backdrop-blur border border-neutral-200 shadow-sm px-1.5">
+            <div className="board-surface hidden md:flex h-14 items-center gap-1 rounded-xl bg-white/90 backdrop-blur border border-neutral-200 shadow-sm px-1.5">
         <button
           onClick={handleExportPNG}
           disabled={exporting}
-          className="
+          className="export-frame-button
             group flex h-10 items-center gap-2 rounded-lg px-3
             text-base font-medium text-neutral-700
             hover:bg-neutral-100 active:bg-neutral-200

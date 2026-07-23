@@ -19,7 +19,7 @@ export const Participants = () => {
   return (
     <div className="fixed bottom-4 right-4 z-40">
             {open && (
-        <div className="absolute bottom-12 right-0 w-[260px] rounded-xl border border-slate-200 bg-white shadow-lg">
+        <div className="board-surface absolute bottom-12 right-0 w-[260px] rounded-xl border border-slate-200 bg-white shadow-lg">
           <div className="px-4 py-2 text-sm font-medium text-slate-700 border-b">
             Participants ({totalUsers})
           </div>
@@ -48,7 +48,7 @@ export const Participants = () => {
             <button
         onClick={() => setOpen((v) => !v)}
         className={cn(
-          "flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 shadow-md transition hover:bg-slate-50",
+          "board-surface flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 shadow-md transition hover:bg-slate-50",
           open && "shadow-lg"
         )}
       >
@@ -100,4 +100,3 @@ Participants.Skeleton = function ParticipantsSkeleton() {
       </div>
     );
   };
-  

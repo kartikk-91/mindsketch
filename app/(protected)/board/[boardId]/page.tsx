@@ -6,6 +6,7 @@ import { Loading } from "./_components/loading";
 import { BoardAccessState } from "./_components/board-access-state";
 import { useEffect, useState } from "react";
 import { BoardRequestError, useBoard } from "@/hooks/use-board";
+import { resolveBoardAppearance } from "@/lib/board-appearance";
 
 export default function BoardPage({
   params,
@@ -35,6 +36,7 @@ export default function BoardPage({
     const status = error instanceof BoardRequestError ? error.status : 500;
     return <BoardAccessState status={status} />;
   }
+  const appearance = resolveBoardAppearance(board.backgroundPattern, board.colorTheme);
 
   return (
     <Room
@@ -42,7 +44,7 @@ export default function BoardPage({
       templateId={board.templateId || undefined}
       fallback={<Loading />}
     >
-      <Canvas boardId={resolvedParams.boardId} />
+      <Canvas boardId={resolvedParams.boardId} backgroundPattern={appearance.backgroundPattern} colorTheme={appearance.colorTheme} />
     </Room>
   );
 }
