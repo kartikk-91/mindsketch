@@ -22,7 +22,7 @@ export default function SSOCallbackPage() {
 
         router.replace("/onboarding");
       } catch (err) {
-        console.error("OAuth callback failed:", err);
+        console.error("[auth] oauth_callback_failed");
       }
     }
 

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import { prisma } from '@/lib/prisma'
+import { logger } from '@/lib/logger'
 
 export async function POST(
   req: NextRequest,
@@ -53,7 +54,7 @@ export async function POST(
 
     return NextResponse.json(board)
   } catch (error) {
-    console.error('Error favoriting board:', error)
+    logger.error('boards', 'favorite_failed', { error: logger.errorKind(error) })
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -95,7 +96,7 @@ export async function DELETE(
 
     return NextResponse.json(board)
   } catch (error) {
-    console.error('Error unfavoriting board:', error)
+    logger.error('boards', 'unfavorite_failed', { error: logger.errorKind(error) })
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

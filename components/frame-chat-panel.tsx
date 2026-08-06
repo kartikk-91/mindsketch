@@ -18,6 +18,13 @@ interface FrameChatPanelProps { boardId: string; isOpen: boolean; initialMode?: 
 
 const INITIAL_QUESTION = "What do you see on this board? Give me a brief overview.";
 
+const describeToolCall = (toolCall: { name: string; parameters: Record<string, unknown> }) => {
+  if (toolCall.name !== "create_layer") return "Applying board change";
+  const layerType = typeof toolCall.parameters.layerType === "string" ? toolCall.parameters.layerType : "element";
+  const shapeType = typeof toolCall.parameters.shapeType === "string" ? toolCall.parameters.shapeType : layerType;
+  return `Creating ${shapeType.toLowerCase()}`;
+};
+
 const needsFreshAnalysis = (message: string) => /\b(re-?analy[sz]e|run ocr|read (?:the )?(?:small|tiny|hidden) (?:text|code)|extract (?:the )?(?:text|code))\b/i.test(message);
 
 type FrameChatSession = {
@@ -100,6 +107,7 @@ export const FrameChatPanel = ({ boardId, isOpen, initialMode = "chat", viewport
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const lastRequestRef = useRef<{ text: string; image?: ChatImage; forceAnalysis?: boolean } | null>(null);
+  const isInitializingRef = useRef(false);
 
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, status]);
 
@@ -183,8 +191,16 @@ export const FrameChatPanel = ({ boardId, isOpen, initialMode = "chat", viewport
   useEffect(() => {
     if (mode !== "chat") return;
     if (hasStarted || getSession(boardId).hasStarted) return;
-    frameChatSessions.set(boardId, { ...getSession(boardId), hasStarted: true });
+    if (isInitializingRef.current) return;
+    
+    // Set ref immediately to prevent race condition
+    isInitializingRef.current = true;
+    
+    // Update session state
+    const currentSession = getSession(boardId);
+    frameChatSessions.set(boardId, { ...currentSession, hasStarted: true });
     setHasStarted(true);
+    
     setIsGenerating(true);
     setStatus("Preparing board…");
     let cancelled = false;
@@ -199,6 +215,8 @@ export const FrameChatPanel = ({ boardId, isOpen, initialMode = "chat", viewport
           setError(cause instanceof Error ? cause.message : "I couldn't start the chat.");
           setIsGenerating(false);
         }
+      } finally {
+        isInitializingRef.current = false;
       }
     }
     void startFrameChat();
@@ -208,6 +226,7 @@ export const FrameChatPanel = ({ boardId, isOpen, initialMode = "chat", viewport
   const restartChat = () => {
     frameChatSessions.delete(boardId);
     lastRequestRef.current = null;
+    isInitializingRef.current = false;
     setMessages([]);
     setActiveImage(null);
     setImageAnalysis(null);
@@ -335,8 +354,7 @@ export const FrameChatPanel = ({ boardId, isOpen, initialMode = "chat", viewport
                   )}
                   {message.type === "tool_call" && message.toolCall && (
                     <div className="text-sm">
-                      <p className="font-medium text-black">Creating: {message.toolCall.name}</p>
-                      <p className="text-xs text-waterloo mt-1">{JSON.stringify(message.toolCall.parameters, null, 2)}</p>
+                      <p className="font-medium text-black">{describeToolCall(message.toolCall)}</p>
                     </div>
                   )}
                   {message.type === "result" && (

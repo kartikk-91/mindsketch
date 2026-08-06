@@ -36,7 +36,7 @@ export function useImageUpload() {
           })
         );
       } catch (err: any) {
-        console.error("Image upload failed:", err);
+        console.error("[uploads] image_upload_failed");
         alert(err.message || "Failed to upload image. Check your Cloudinary configuration.");
       } finally {
         setIsUploading(false);

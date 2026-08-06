@@ -215,8 +215,8 @@ export async function captureFrame(format: ExportFormat, quality?: number): Prom
     return format === "png"
       ? await domtoimage.toPng(capture.root, options)
       : await domtoimage.toJpeg(capture.root, { ...options, quality: quality ?? 0.82 });
-  } catch (error) {
-    console.error("Frame export failed", error);
+  } catch {
+    console.error("[exports] frame_export_failed");
     return null;
   } finally {
     capture.root.remove();
@@ -275,8 +275,8 @@ export async function captureFrameForAgent(
     return format === "png"
       ? await domtoimage.toPng(capture.root, options)
       : await domtoimage.toJpeg(capture.root, { ...options, quality: 0.7 });
-  } catch (error) {
-    console.error("Agent frame export failed", error);
+  } catch {
+    console.error("[exports] agent_frame_export_failed");
     return null;
   } finally {
     capture.root.remove();

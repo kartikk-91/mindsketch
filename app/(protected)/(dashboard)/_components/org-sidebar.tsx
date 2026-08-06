@@ -4,6 +4,7 @@
 import { cn } from "@/lib/utils";
 import { LayoutDashboard, Star} from "lucide-react";
 import Image from "next/image";
+import Link from "next/link";
 import { useDashboard } from "../dashboard-context";
 import { UserMenu } from "@/components/user-menu";
 import { OrganizationSwitcher } from "@/components/organization-switcher"; 
@@ -17,7 +18,7 @@ export const OrgSidebar = () => {
     <aside className="hidden lg:flex h-full w-[240px] flex-col border-r border-[#EEEEEE] bg-white">
       
       <div className="px-5 pt-5 pb-4 border-b border-[#EEEEEE]">
-        <div className="flex items-center gap-2 px-2">
+        <Link href="/" className="flex items-center gap-2 px-2">
           <Image
             src="/logo.png"
             alt="Mindsketch"
@@ -26,7 +27,7 @@ export const OrgSidebar = () => {
             priority
             className="object-contain"
           />
-        </div>
+        </Link>
       </div>
 
       

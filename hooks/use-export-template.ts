@@ -23,8 +23,6 @@ export function useExportTemplate() {
       ) as Record<string, Layer>,
     };
 
-    console.log("===== TEMPLATE SNAPSHOT =====");
-    console.log(JSON.stringify(snapshot, null, 2));
 
     return snapshot;
   };

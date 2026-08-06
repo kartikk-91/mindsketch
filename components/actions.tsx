@@ -47,7 +47,7 @@ export const Actions = ({
     try {
       await deleteBoard(id);
       toast.success("Board deleted");
-      router.push("/");
+      router.push("/dashboard");
     } catch {
       toast.error("Couldn't delete board");
     } finally {

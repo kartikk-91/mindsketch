@@ -45,7 +45,7 @@ export const BoardAccessState = ({ status }: BoardAccessStateProps) => {
           {content.description}
         </p>
         <Link
-          href="/"
+          href="/dashboard"
           className="mt-7 inline-flex h-11 items-center justify-center gap-2 rounded-full bg-[#181C31] px-5 text-sm font-semibold text-white transition-colors hover:bg-[#30364F] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#20C5A8] focus-visible:ring-offset-2"
         >
           <ArrowLeft className="h-4 w-4" />

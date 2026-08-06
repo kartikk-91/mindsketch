@@ -101,8 +101,8 @@ export function useAgentDraw(insertLayerFn?: (params: CreateLayerParams) => Prom
                   setMessages((previous) => [...previous, { type: "error", error: detail }]);
                 }
               }
-            } catch (e) {
-              console.error("Failed to parse message:", line, e);
+            } catch {
+              console.warn("[ai.draw] stream_parse_failed");
             }
           }
         }

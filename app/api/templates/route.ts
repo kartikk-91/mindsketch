@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import { prisma } from '@/lib/prisma'
+import { logger } from '@/lib/logger'
 
 export async function GET() {
   try {
@@ -12,7 +13,7 @@ export async function GET() {
 
     return NextResponse.json(templates)
   } catch (error) {
-    console.error('Error fetching templates:', error)
+    logger.error('templates', 'list_failed', { error: logger.errorKind(error) })
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -44,7 +45,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json(template, { status: 201 })
   } catch (error) {
-    console.error('Error creating template:', error)
+    logger.error('templates', 'create_failed', { error: logger.errorKind(error) })
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

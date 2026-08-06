@@ -45,8 +45,8 @@ async function seedTemplates() {
 }
 
 seedTemplates()
-    .catch((err) => {
-        console.error(err);
+    .catch(() => {
+        console.error("Template seeding failed.");
         process.exit(1);
     })
     .finally(() => {

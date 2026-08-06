@@ -1,8 +1,8 @@
 "use client";
 
-import { useSignUp, useSignIn } from "@clerk/nextjs";
+import { useAuth, useSignUp, useSignIn } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import {
@@ -74,6 +74,7 @@ function FieldError({ message }: { message?: string }) {
 export default function Page() {
   const { isLoaded, signUp, setActive } = useSignUp();
   const { signIn } = useSignIn();
+  const { isLoaded: isAuthLoaded, isSignedIn } = useAuth();
   const router = useRouter();
 
   const [firstName, setFirstName] = useState("");
@@ -90,6 +91,16 @@ export default function Page() {
   const [isResending, setIsResending] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
   const [errors, setErrors] = useState<Errors>({});
+
+  useEffect(() => {
+    if (isAuthLoaded && isSignedIn) {
+      router.replace("/dashboard");
+    }
+  }, [isAuthLoaded, isSignedIn, router]);
+
+  if (isAuthLoaded && isSignedIn) {
+    return null;
+  }
 
   const usernameValid = username.trim().length >= 3;
   const passwordStrong = password.length >= 8;
@@ -168,7 +179,7 @@ export default function Page() {
       const result = await signUp.attemptEmailAddressVerification({ code });
       if (result.status === "complete" && result.createdSessionId) {
         await setActive({ session: result.createdSessionId });
-        router.replace("/");
+        router.replace("/dashboard");
       } else {
         setErrors({ code: "That code didn't work. Double-check it and try again." });
       }
@@ -210,12 +221,12 @@ export default function Page() {
     <div className="flex h-screen w-full overflow-hidden bg-white lg:grid lg:grid-cols-2">
       
       <div className="relative hidden flex-col justify-center overflow-hidden bg-[#F6F8F1] px-12 py-10 lg:flex xl:px-16">
-        <div className="absolute left-10 top-8 flex items-center gap-2 xl:left-14">
+        <Link href="/" className="absolute left-10 top-8 flex items-center gap-2 xl:left-14">
           <Image src="/logo-em.png" alt="Mindsketch" width={50} height={50} />
           <span className="text-xl font-semibold tracking-tight text-black">
             Mindsketch
           </span>
-        </div>
+        </Link>
 
         <div className="max-w-md">
           <h1 className="text-4xl font-bold leading-[1.15] tracking-tight text-black xl:text-[2.65rem]">
@@ -252,10 +263,10 @@ export default function Page() {
       
       <div className="flex h-full flex-col overflow-y-auto px-6 py-6 sm:px-10 lg:justify-center lg:overflow-visible lg:px-12 xl:px-20">
         <div className="mx-auto flex w-full max-w-sm flex-1 flex-col justify-center lg:flex-none">
-          <div className="mb-5 flex items-center gap-2 lg:hidden">
+          <Link href="/" className="mb-5 flex items-center gap-2 lg:hidden">
             <Image src="/logo-em.png" alt="Mindsketch" width={26} height={26} />
             <span className="text-base font-semibold text-black">Mindsketch</span>
-          </div>
+          </Link>
 
           {!verifying ? (
             <>

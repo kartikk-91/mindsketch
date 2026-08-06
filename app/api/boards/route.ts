@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth, clerkClient } from '@clerk/nextjs/server'
 import { prisma } from '@/lib/prisma'
 import { resolveBoardAppearance } from '@/lib/board-appearance'
+import { logger } from '@/lib/logger'
 import fs from 'fs'
 import path from 'path'
 
@@ -92,7 +93,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json(boardsWithFavorites)
   } catch (error) {
-    console.error('Error fetching boards:', error)
+    logger.error('boards', 'list_failed', { error: logger.errorKind(error) })
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -147,7 +148,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json(board, { status: 201 })
   } catch (error) {
-    console.error('Error creating board:', error)
+    logger.error('boards', 'create_failed', { error: logger.errorKind(error) })
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

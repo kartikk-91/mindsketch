@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { auth } from "@clerk/nextjs/server";
+import { logger } from "@/lib/logger";
 
 type ChatMessage = { role: "user" | "assistant"; content: string };
 type ChatImage = { imageBase64: string; mimeType: string };
@@ -17,7 +18,7 @@ const IMAGE_ANALYSIS_PROMPT = `Analyze this MindSketch board for another assista
 const CHAT_SYSTEM_PROMPT = "You are a helpful assistant discussing a MindSketch board. Be clear and practical. Use the supplied image analysis when it is relevant, but do not claim to see information that is not in it.";
 const GEMINI_VISION_MODEL = "gemini-3-flash-preview";
 const GROQ_MODEL = "openai/gpt-oss-20b";
-const GEMINI_FREE_KEY_NAMES = Array.from({ length: 15 }, (_, index) => `GEMINI_API_KEY_F${index + 1}`);
+const GEMINI_FREE_KEY_NAMES = Array.from({ length: 3 }, (_, index) => `GEMINI_API_KEY_F${index + 1}`);
 const GROQ_FREE_KEY_NAMES = Array.from({ length: 3 }, (_, index) => `GROQ_API_KEY_F${index + 1}`);
 const GEMINI_FREE_KEY_ATTEMPTS = 5;
 
@@ -45,6 +46,7 @@ function friendlyError() {
 }
 
 type ProviderKey = { name: string; value: string; source: "free" | "paid" };
+type ProviderResult = { provider: "groq"; credential: "free" | "paid"; outputCharacters: number };
 
 function shuffled<T>(items: T[]) {
   const result = [...items];
@@ -72,11 +74,17 @@ function providerKeys(freeKeyNames: string[], paidKeyName: string, maxFreeAttemp
   ];
 }
 
-async function analyzeImage(image: ChatImage): Promise<string> {
+async function analyzeImage(image: ChatImage, requestId: string): Promise<string> {
   const keys = providerKeys(GEMINI_FREE_KEY_NAMES, "GEMINI_API_KEY", GEMINI_FREE_KEY_ATTEMPTS, "Gemini");
   let lastFailure = "Gemini vision request failed";
+  const startedAt = Date.now();
+  logger.info("ai.chat", "vision_started", { request: requestId, image: true });
 
-  for (const key of keys) {
+  for (let index = 0; index < keys.length; index++) {
+    const key = keys[index];
+    if (key.source === "paid" && index > 0) {
+      logger.warn("ai.chat", "paid_fallback", { request: requestId, provider: "gemini", afterAttempts: index });
+    }
     try {
       const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_VISION_MODEL}:generateContent?key=${key.value}`, {
         method: "POST",
@@ -94,19 +102,21 @@ async function analyzeImage(image: ChatImage): Promise<string> {
       });
       if (!response.ok) {
         lastFailure = `HTTP ${response.status}`;
-        console.warn(`[frame-chat] ${key.source} Gemini key (${key.name}) failed (${response.status})`);
+        logger.warn("ai.chat", "provider_retry", { request: requestId, provider: "gemini", credential: key.source, attempt: index + 1, status: response.status });
         continue;
       }
       const payload = await response.json();
       const analysis = payload.candidates?.[0]?.content?.parts?.map((part: { text?: string }) => part.text ?? "").join("");
       if (!analysis) throw new Error("Gemini returned no board brief");
+      logger.info("ai.chat", "vision_complete", { request: requestId, provider: "gemini", credential: key.source, model: GEMINI_VISION_MODEL, durationMs: Date.now() - startedAt });
       return analysis;
     } catch (error) {
       lastFailure = error instanceof Error ? error.message : "Network error";
-      console.warn(`[frame-chat] ${key.source} Gemini key (${key.name}) failed:`, error);
+      logger.warn("ai.chat", "provider_retry", { request: requestId, provider: "gemini", credential: key.source, attempt: index + 1, error: logger.errorKind(error) });
     }
   }
 
+  logger.error("ai.chat", "vision_failed", { request: requestId, attempts: keys.length });
   throw new Error(`Gemini vision request failed after free-key rotation and paid fallback: ${lastFailure}`);
 }
 
@@ -119,12 +129,17 @@ function groqMessages(messages: ChatMessage[], imageAnalysis?: string) {
 }
 
 
-async function streamGroq(messages: ChatMessage[], imageAnalysis: string | undefined, emit: (type: string, value: string) => void) {
+async function streamGroq(messages: ChatMessage[], imageAnalysis: string | undefined, emit: (type: string, value: string) => void, requestId: string): Promise<ProviderResult> {
   const keys = providerKeys(GROQ_FREE_KEY_NAMES, "GROQ_API_KEY", GROQ_FREE_KEY_NAMES.length, "Groq");
   let response: Response | undefined;
+  let selectedKey: ProviderKey | undefined;
   let lastFailure = "Groq request failed";
 
-  for (const key of keys) {
+  for (let index = 0; index < keys.length; index++) {
+    const key = keys[index];
+    if (key.source === "paid" && index > 0) {
+      logger.warn("ai.chat", "paid_fallback", { request: requestId, provider: "groq", afterAttempts: index });
+    }
     try {
       const candidateResponse = await fetch("https://api.groq.com/openai/v1/chat/completions", {
         method: "POST",
@@ -141,20 +156,25 @@ async function streamGroq(messages: ChatMessage[], imageAnalysis: string | undef
       });
       if (candidateResponse.ok && candidateResponse.body) {
         response = candidateResponse;
+        selectedKey = key;
         break;
       }
       lastFailure = `HTTP ${candidateResponse.status}`;
-      console.warn(`[frame-chat] ${key.source} Groq key (${key.name}) failed (${candidateResponse.status})`);
+      logger.warn("ai.chat", "provider_retry", { request: requestId, provider: "groq", credential: key.source, attempt: index + 1, status: candidateResponse.status });
     } catch (error) {
       lastFailure = error instanceof Error ? error.message : "Network error";
-      console.warn(`[frame-chat] ${key.source} Groq key (${key.name}) failed:`, error);
+      logger.warn("ai.chat", "provider_retry", { request: requestId, provider: "groq", credential: key.source, attempt: index + 1, error: logger.errorKind(error) });
     }
   }
-  if (!response?.body) throw new Error(`Groq request failed after free-key rotation and paid fallback: ${lastFailure}`);
+  if (!response?.body || !selectedKey) {
+    logger.error("ai.chat", "completion_failed", { request: requestId, attempts: keys.length });
+    throw new Error(`Groq request failed after free-key rotation and paid fallback: ${lastFailure}`);
+  }
 
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
   let buffer = "";
+  let outputCharacters = 0;
   while (true) {
     const { done, value } = await reader.read();
     buffer += decoder.decode(value ?? new Uint8Array(), { stream: !done });
@@ -163,14 +183,17 @@ async function streamGroq(messages: ChatMessage[], imageAnalysis: string | undef
     for (const line of lines) {
       if (!line.startsWith("data: ")) continue;
       const payload = line.slice(6).trim();
-      if (payload === "[DONE]") return;
+      if (payload === "[DONE]") return { provider: "groq", credential: selectedKey.source, outputCharacters };
       try {
         const delta = JSON.parse(payload).choices?.[0]?.delta?.content;
-        if (delta) emit("token", delta);
+        if (delta) {
+          outputCharacters += delta.length;
+          emit("token", delta);
+        }
       } catch {
       }
     }
-    if (done) return;
+    if (done) return { provider: "groq", credential: selectedKey.source, outputCharacters };
   }
 }
 
@@ -178,6 +201,8 @@ export async function POST(req: NextRequest) {
   const { userId } = await auth();
   if (!userId) return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 });
   if (!checkRateLimit(userId)) return new Response(JSON.stringify({ error: "Too many messages. Please wait a moment and try again." }), { status: 429 });
+  const requestId = crypto.randomUUID();
+  const startedAt = Date.now();
 
   let body: FrameChatRequest;
   try {
@@ -186,6 +211,7 @@ export async function POST(req: NextRequest) {
     return new Response(JSON.stringify({ error: "Invalid chat request." }), { status: 400 });
   }
   if (!body.messages?.length) return new Response(JSON.stringify({ error: "A chat message is required." }), { status: 400 });
+  logger.info("ai.chat", "request_started", { request: requestId, messages: body.messages.length, image: Boolean(body.image), reuseAnalysis: Boolean(body.imageAnalysis) });
 
   const stream = new ReadableStream({
     async start(controller) {
@@ -194,15 +220,16 @@ export async function POST(req: NextRequest) {
         let imageAnalysis = body.imageAnalysis;
         if (body.image && (!imageAnalysis || body.forceAnalysis)) {
           emit("status", "Understanding the image…");
-          imageAnalysis = await analyzeImage(body.image);
+          imageAnalysis = await analyzeImage(body.image, requestId);
           emit("analysis", imageAnalysis);
         }
 
         emit("status", "Thinking…");
-        await streamGroq(body.messages, imageAnalysis, emit);
+        const result = await streamGroq(body.messages, imageAnalysis, emit, requestId);
         emit("done", "");
+        logger.info("ai.chat", "request_complete", { request: requestId, provider: result.provider, credential: result.credential, model: GROQ_MODEL, durationMs: Date.now() - startedAt, outputCharacters: result.outputCharacters });
       } catch (error) {
-        console.error("frame-chat error:", error);
+        logger.error("ai.chat", "request_failed", { request: requestId, durationMs: Date.now() - startedAt, error: logger.errorKind(error) });
         emit("error", friendlyError());
       } finally {
         controller.close();
@@ -215,6 +242,7 @@ export async function POST(req: NextRequest) {
       "Content-Type": "application/x-ndjson; charset=utf-8",
       "Cache-Control": "no-cache, no-transform",
       Connection: "keep-alive",
+      "X-Request-Id": requestId,
     },
   });
 }

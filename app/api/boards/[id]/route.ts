@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import { prisma } from '@/lib/prisma'
+import { logger } from '@/lib/logger'
 
 export async function GET(
   req: NextRequest,
@@ -31,7 +32,7 @@ export async function GET(
 
     return NextResponse.json(board)
   } catch (error) {
-    console.error('Error fetching board:', error)
+    logger.error('boards', 'get_failed', { error: logger.errorKind(error) })
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -91,7 +92,7 @@ export async function PATCH(
 
     return NextResponse.json(board)
   } catch (error) {
-    console.error('Error updating board:', error)
+    logger.error('boards', 'update_failed', { error: logger.errorKind(error) })
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -127,7 +128,7 @@ export async function DELETE(
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('Error deleting board:', error)
+    logger.error('boards', 'delete_failed', { error: logger.errorKind(error) })
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

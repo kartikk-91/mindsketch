@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { logger } from '@/lib/logger'
 
 export async function GET(
   req: NextRequest,
@@ -18,7 +19,7 @@ export async function GET(
 
     return NextResponse.json(template)
   } catch (error) {
-    console.error('Error fetching template:', error)
+    logger.error('templates', 'get_failed', { error: logger.errorKind(error) })
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

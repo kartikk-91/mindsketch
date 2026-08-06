@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { GoogleGenAI } from "@google/genai";
+import { logger } from "@/lib/logger";
 
 const ai = new GoogleGenAI({
   apiKey: process.env.GEMINI_API_KEY!,
@@ -64,7 +65,7 @@ Output rules:
 
     return NextResponse.json(JSON.parse(raw));
   } catch (err) {
-    console.error("Explain-frame error:", err);
+    logger.error("ai.explain", "request_failed", { error: logger.errorKind(err) });
     return NextResponse.json(
       { explanation: "Failed to explain frame" },
       { status: 500 }

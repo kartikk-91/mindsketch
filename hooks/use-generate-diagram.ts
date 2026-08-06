@@ -112,7 +112,7 @@ export function useGenerateDiagram() {
         const fromId = nodeIdMap.get(edge.from);
         const toId = nodeIdMap.get(edge.to);
         if (!fromId || !toId) {
-          console.warn(`Skipping edge ${edge.from}→${edge.to}: node not found`);
+          console.warn("[diagram] skipped_edge_missing_node");
           continue;
         }
 

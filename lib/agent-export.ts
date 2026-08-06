@@ -35,7 +35,6 @@ export async function captureFrameForAgentWithValidation(
     textHeight >= 20 ? "high" : 
     textHeight >= 15 ? "medium" : "low";
   if (quality === "low" && maxDimension < 2048) {
-    console.log("Quality low, increasing resolution to", maxDimension * 1.5);
     return captureFrameForAgentWithValidation(Math.round(maxDimension * 1.5));
   }
 
