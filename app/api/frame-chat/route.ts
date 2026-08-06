@@ -20,8 +20,11 @@ const CHAT_SYSTEM_PROMPT = "You are a helpful assistant discussing a MindSketch 
 // answers the whole conversation, avoiding repeated image uploads on follow-up questions.
 // `gemini-2.5-flash` is listed for older projects but returns a 404 for new API
 // consumers. This current Flash model is vision-capable and available to this key.
-const GEMINI_VISION_MODEL = "gemini-3.5-flash-lite";
+const GEMINI_VISION_MODEL = "gemini-3-flash-preview";
 const GROQ_MODEL = "openai/gpt-oss-20b";
+const GEMINI_FREE_KEY_NAMES = Array.from({ length: 15 }, (_, index) => `GEMINI_API_KEY_F${index + 1}`);
+const GROQ_FREE_KEY_NAMES = Array.from({ length: 3 }, (_, index) => `GROQ_API_KEY_F${index + 1}`);
+const GEMINI_FREE_KEY_ATTEMPTS = 5;
 
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
 const RATE_LIMIT_MAX = 20;
@@ -46,27 +49,70 @@ function friendlyError() {
   return "I couldn't generate a reply right now. Please try again in a moment.";
 }
 
+type ProviderKey = { name: string; value: string; source: "free" | "paid" };
+
+function shuffled<T>(items: T[]) {
+  const result = [...items];
+  for (let index = result.length - 1; index > 0; index--) {
+    const swapIndex = Math.floor(Math.random() * (index + 1));
+    [result[index], result[swapIndex]] = [result[swapIndex], result[index]];
+  }
+  return result;
+}
+
+function providerKeys(freeKeyNames: string[], paidKeyName: string, maxFreeAttempts: number, provider: string): ProviderKey[] {
+  const freeKeys = freeKeyNames
+    .map((name) => ({ name, value: process.env[name] }))
+    .filter((key): key is { name: string; value: string } => Boolean(key.value));
+  const selectedFreeKeys = shuffled(freeKeys).slice(0, maxFreeAttempts);
+  const paidKey = process.env[paidKeyName];
+
+  if (!selectedFreeKeys.length && !paidKey) {
+    throw new Error(`${provider} is not configured. Add one or more free keys or ${paidKeyName}.`);
+  }
+
+  return [
+    ...selectedFreeKeys.map((key) => ({ ...key, source: "free" as const })),
+    ...(paidKey ? [{ name: paidKeyName, value: paidKey, source: "paid" as const }] : []),
+  ];
+}
+
 async function analyzeImage(image: ChatImage): Promise<string> {
-  if (!process.env.GEMINI_API_KEY) throw new Error("Gemini is not configured");
-  const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_VISION_MODEL}:generateContent?key=${process.env.GEMINI_API_KEY}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      contents: [{
-        role: "user",
-        parts: [
-          { text: IMAGE_ANALYSIS_PROMPT },
-          { inlineData: { mimeType: image.mimeType, data: image.imageBase64 } },
-        ],
-      }],
-      generationConfig: { temperature: 0.15, maxOutputTokens: 4096 },
-    }),
-  });
-  if (!response.ok) throw new Error(`Gemini vision request failed (${response.status})`);
-  const payload = await response.json();
-  const analysis = payload.candidates?.[0]?.content?.parts?.map((part: { text?: string }) => part.text ?? "").join("");
-  if (!analysis) throw new Error("Gemini returned no board brief");
-  return analysis;
+  const keys = providerKeys(GEMINI_FREE_KEY_NAMES, "GEMINI_API_KEY", GEMINI_FREE_KEY_ATTEMPTS, "Gemini");
+  let lastFailure = "Gemini vision request failed";
+
+  for (const key of keys) {
+    try {
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_VISION_MODEL}:generateContent?key=${key.value}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{
+            role: "user",
+            parts: [
+              { text: IMAGE_ANALYSIS_PROMPT },
+              { inlineData: { mimeType: image.mimeType, data: image.imageBase64 } },
+            ],
+          }],
+          generationConfig: { temperature: 0.15, maxOutputTokens: 4096 },
+        }),
+      });
+      if (!response.ok) {
+        lastFailure = `HTTP ${response.status}`;
+        console.warn(`[frame-chat] ${key.source} Gemini key (${key.name}) failed (${response.status})`);
+        continue;
+      }
+      const payload = await response.json();
+      const analysis = payload.candidates?.[0]?.content?.parts?.map((part: { text?: string }) => part.text ?? "").join("");
+      if (!analysis) throw new Error("Gemini returned no board brief");
+      return analysis;
+    } catch (error) {
+      lastFailure = error instanceof Error ? error.message : "Network error";
+      console.warn(`[frame-chat] ${key.source} Gemini key (${key.name}) failed:`, error);
+    }
+  }
+
+  throw new Error(`Gemini vision request failed after free-key rotation and paid fallback: ${lastFailure}`);
 }
 
 function groqMessages(messages: ChatMessage[], imageAnalysis?: string) {
@@ -79,21 +125,37 @@ function groqMessages(messages: ChatMessage[], imageAnalysis?: string) {
 
 /** Streams Groq's OpenAI-compatible SSE response as plain message deltas. */
 async function streamGroq(messages: ChatMessage[], imageAnalysis: string | undefined, emit: (type: string, value: string) => void) {
-  if (!process.env.GROQ_API_KEY) throw new Error("Groq is not configured");
-  const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
-    },
-    body: JSON.stringify({
-      model: GROQ_MODEL,
-      messages: groqMessages(messages, imageAnalysis),
-      temperature: 0.4,
-      stream: true,
-    }),
-  });
-  if (!response.ok || !response.body) throw new Error(`Groq request failed (${response.status})`);
+  const keys = providerKeys(GROQ_FREE_KEY_NAMES, "GROQ_API_KEY", GROQ_FREE_KEY_NAMES.length, "Groq");
+  let response: Response | undefined;
+  let lastFailure = "Groq request failed";
+
+  for (const key of keys) {
+    try {
+      const candidateResponse = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${key.value}`,
+        },
+        body: JSON.stringify({
+          model: GROQ_MODEL,
+          messages: groqMessages(messages, imageAnalysis),
+          temperature: 0.4,
+          stream: true,
+        }),
+      });
+      if (candidateResponse.ok && candidateResponse.body) {
+        response = candidateResponse;
+        break;
+      }
+      lastFailure = `HTTP ${candidateResponse.status}`;
+      console.warn(`[frame-chat] ${key.source} Groq key (${key.name}) failed (${candidateResponse.status})`);
+    } catch (error) {
+      lastFailure = error instanceof Error ? error.message : "Network error";
+      console.warn(`[frame-chat] ${key.source} Groq key (${key.name}) failed:`, error);
+    }
+  }
+  if (!response?.body) throw new Error(`Groq request failed after free-key rotation and paid fallback: ${lastFailure}`);
 
   const reader = response.body.getReader();
   const decoder = new TextDecoder();

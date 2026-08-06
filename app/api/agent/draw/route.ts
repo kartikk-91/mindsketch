@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextRequest } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 
@@ -17,9 +16,10 @@ type DrawOperation = {
 };
 
 // Use the current Flash endpoint; Gemini 2.5 Flash returns 404 for new API users.
-const MODEL = "gemini-3.5-flash-lite";
+const MODEL = "gemini-3-flash-preview";
 const MAX_OPERATIONS = 48;
-const PLANNER_ATTEMPTS = 3;
+const FREE_KEY_ATTEMPTS = 5;
+const FREE_KEY_NAMES = Array.from({ length: 3 }, (_, index) => `GEMINI_API_KEY_F${index + 1}`);
 const rateLimits = new Map<string, { count: number; resetAt: number }>();
 
 const encoder = new TextEncoder();
@@ -50,7 +50,32 @@ const SHAPE_TYPES = new Set(["Rectangle", "Ellipse", "Line", "Arrow", "Diamond",
 
 const finite = (value: unknown, fallback: number) => typeof value === "number" && Number.isFinite(value) ? value : fallback;
 const color = (value: unknown, fallback: string) => typeof value === "string" && /^\s*\d{1,3}\s*,\s*\d{1,3}\s*,\s*\d{1,3}\s*$/.test(value) ? value : fallback;
-const pause = (milliseconds: number) => new Promise((resolve) => setTimeout(resolve, milliseconds));
+
+function shuffled<T>(items: T[]) {
+  const result = [...items];
+  for (let index = result.length - 1; index > 0; index--) {
+    const swapIndex = Math.floor(Math.random() * (index + 1));
+    [result[index], result[swapIndex]] = [result[swapIndex], result[index]];
+  }
+  return result;
+}
+
+function plannerKeys() {
+  const freeKeys = FREE_KEY_NAMES
+    .map((name) => ({ name, value: process.env[name] }))
+    .filter((key): key is { name: string; value: string } => Boolean(key.value));
+  const selectedFreeKeys = shuffled(freeKeys).slice(0, FREE_KEY_ATTEMPTS);
+  const paidKey = process.env.GEMINI_API_KEY;
+
+  if (!selectedFreeKeys.length && !paidKey) {
+    throw new Error("Drawing AI is not configured. Add GEMINI_API_KEY_F1 through GEMINI_API_KEY_F15 or GEMINI_API_KEY.");
+  }
+
+  return [
+    ...selectedFreeKeys.map((key) => ({ ...key, source: "free" as const })),
+    ...(paidKey ? [{ name: "GEMINI_API_KEY", value: paidKey, source: "paid" as const }] : []),
+  ];
+}
 
 function normalizeOperation(value: unknown): DrawOperation | null {
   if (!value || typeof value !== "object") return null;
@@ -87,47 +112,43 @@ function normalizeOperation(value: unknown): DrawOperation | null {
 }
 
 async function createPlan(prompt: string, image?: CanvasImage, viewport?: DrawRequest["viewport"]): Promise<DrawOperation[]> {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) throw new Error("Drawing AI is not configured. Add GEMINI_API_KEY to enable it.");
   const visibleArea = viewport ? `The user is currently viewing canvas coordinates x=${Math.round(viewport.x)}..${Math.round(viewport.x + viewport.width)}, y=${Math.round(viewport.y)}..${Math.round(viewport.y + viewport.height)}.` : "The visible canvas area is approximately x=0..1400, y=0..900.";
   const instruction = `You are MindSketch's diagram planner. Turn the user's request into a finished, presentation-ready whiteboard composition, never a single generic object. Return JSON only: {"summary":"short progress label","operations":[...]}. Each operation has a unique short id, layerType (Rectangle, Ellipse, Text, Note, Shape, Image), optional shapeType, position {x,y}, size {width,height}, style {fill,stroke,strokeWidth}, and optional content. IMPORTANT: every meaningful diagram node MUST have a short, visible content label. For a labelled rectangle or ellipse, always use layerType:"Shape" with shapeType:"Rectangle" or "Ellipse"—never use the base Rectangle/Ellipse types—because Shape is the text-capable node type. Only arrows and clearly decorative elements may have no content. For Image, provide chart {type:"bar"|"pie"|"area"|"donut",title,data:[{label,value,color?}]}. Use bar for comparisons, area for time-series/trends and filled charts, pie/donut for shares. For every chart request emit one or more Image chart operations with clear titles, complete supplied data, 4-8 values, and unique category colors. Add useful supporting notes or KPI shapes around it when requested. Do not use Image for anything else. For Shape Arrow that connects two generated nodes, add connect:{from:"node-id",to:"node-id"}; these must refer to node operation ids, and arrows must come after their nodes. This creates true board connectors that stay attached as nodes move. Allowed Shape values: Rectangle, Ellipse, Line, Arrow, Diamond, Triangle, Star, Capsule, Parallelogram, Cylinder, Cloud, Pentagon, Hexagon, Heart, SpeechBubble, Document, ArrowLeft, ArrowRight, ArrowBidirectional, Code. Use 6-30 operations when the request is a diagram: include a title, labelled nodes, and Arrow connectors. Visual direction is mandatory: use 3-5 distinct harmonious rgb fills (examples: teal 32,197,168; blue 91,141,239; violet 139,92,246; amber 255,184,0; coral 251,113,133), a dark stroke 24,28,49, and 1-3px stroke widths. Color-code meaning consistently: start/success teal, actions blue, decisions amber, data violet, risks coral. Make the primary element larger, use spacing and alignment, and avoid repeating the same fill for every node. ${visibleArea} Position every new element within this visible area. Use the supplied screenshot to identify empty space; if there is existing work, place the new composition in the largest clear region rather than overlapping it. Never use a fixed global origin. User request: ${prompt}`;
   const parts: Array<Record<string, unknown>> = [{ text: instruction }];
   if (image) parts.push({ inlineData: { mimeType: image.mimeType, data: image.imageBase64 } });
-  let payload: any;
+  let operations: DrawOperation[] | undefined;
   let lastFailure = "Drawing service unavailable";
-  for (let attempt = 1; attempt <= PLANNER_ATTEMPTS; attempt++) {
+  const keys = plannerKeys();
+  for (let attempt = 0; attempt < keys.length; attempt++) {
+    const key = keys[attempt];
     try {
-      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${apiKey}`, {
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${key.value}`, {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ contents: [{ role: "user", parts }], generationConfig: { temperature: 0.25, responseMimeType: "application/json" } }),
       });
       if (response.ok) {
-        payload = await response.json();
+        const responsePayload = await response.json();
+        const responseText = responsePayload.candidates?.[0]?.content?.parts?.map((part: { text?: string }) => part.text ?? "").join("");
+        if (!responseText) throw new Error("Gemini returned no drawing plan");
+        const plan = extractJson(responseText);
+        const candidateOperations = Array.isArray(plan.operations) ? plan.operations.map(normalizeOperation).filter(Boolean) as DrawOperation[] : [];
+        if (!candidateOperations.length) throw new Error("Gemini returned no drawable elements");
+        operations = candidateOperations;
         break;
       }
       const providerError = await response.text();
       lastFailure = `HTTP ${response.status}`;
       // Keep the provider's real diagnostic in server logs; never expose it to the board UI.
-      console.warn(`[draw-ai] planner attempt ${attempt}/${PLANNER_ATTEMPTS} failed (${response.status}): ${providerError}`);
-      if (response.status < 500 && response.status !== 429) break;
+      console.warn(`[draw-ai] ${key.source} planner key attempt ${attempt + 1}/${keys.length} (${key.name}) failed (${response.status}): ${providerError}`);
     } catch (error) {
       lastFailure = error instanceof Error ? error.message : "Network error";
-      console.warn(`[draw-ai] planner attempt ${attempt}/${PLANNER_ATTEMPTS} failed:`, error);
-    }
-    if (attempt < PLANNER_ATTEMPTS) {
-      console.info(`[draw-ai] retrying planner request (${attempt + 1}/${PLANNER_ATTEMPTS})`);
-      await pause(500 * attempt);
+      console.warn(`[draw-ai] ${key.source} planner key attempt ${attempt + 1}/${keys.length} (${key.name}) failed:`, error);
     }
   }
-  if (!payload) {
-    console.error(`[draw-ai] planner unavailable after retries: ${lastFailure}`);
+  if (!operations) {
+    console.error(`[draw-ai] planner unavailable after free-key rotation and paid fallback: ${lastFailure}`);
     throw new Error("Drawing AI is temporarily unavailable. Please try again in a moment.");
   }
-  const text = payload.candidates?.[0]?.content?.parts?.map((part: { text?: string }) => part.text ?? "").join("");
-  if (!text) throw new Error("Drawing planner returned no plan.");
-  const plan = extractJson(text);
-  let operations = Array.isArray(plan.operations) ? plan.operations.map(normalizeOperation).filter(Boolean) as DrawOperation[] : [];
-  if (!operations.length) throw new Error("The drawing planner did not produce drawable elements.");
   // A missing or uniform model palette used to turn every generated node blue. Give
   // a composition a readable, differentiated palette even when the model omits style.
   const visualNodes = operations.filter((operation) => ["Rectangle", "Ellipse", "Note", "Shape"].includes(operation.layerType) && !(operation.layerType === "Shape" && operation.shapeType === "Arrow"));
