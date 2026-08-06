@@ -12,9 +12,6 @@ const isOneDimensionalShape = (layer: Layer): layer is ShapeLayer =>
 
 const layerBounds = (layer: Layer): XYWH => {
     if (!isOneDimensionalShape(layer)) return layer;
-
-    // Ordinary arrows and lines are horizontal. Connector arrows use height as
-    // their endpoint delta, so only those need a vertical visual bound.
     const endY = layer.shape === ShapeType.Arrow && (layer.startLayerId || layer.endLayerId)
         ? layer.y + layer.height
         : layer.y;

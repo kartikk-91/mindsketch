@@ -117,7 +117,7 @@ const looksLikeOpenArrow = (points: Point[]) => {
   return acceptableWing(firstWing) && acceptableWing(secondWing);
 };
 
-/** Recognises intentionally drawn diagram shapes while preserving ordinary freehand strokes. */
+
 export const recognizeSmartShape = (rawPoints: number[][], color: Color, strokeWidth: number): ShapeLayer | null => {
   if (rawPoints.length < 10) return null;
   const points = rawPoints.map(([x, y]) => ({ x, y }));
@@ -147,8 +147,6 @@ export const recognizeSmartShape = (rawPoints: number[][], color: Color, strokeW
     const tip = points.reduce((furthest, point) => distance(point, start) > distance(furthest, start) ? point : furthest, points[1]);
     const length = distance(start, tip);
     const center = { x: (start.x + tip.x) / 2, y: (start.y + tip.y) / 2 };
-    // Store a horizontal arrow in local coordinates, then rotate it around its
-    // visible centre. This keeps recognition, selection, and rotation aligned.
     return {
       ...build(ShapeType.Arrow),
       x: center.x - length / 2,
@@ -173,9 +171,6 @@ export const recognizeSmartShape = (rawPoints: number[][], color: Color, strokeW
     const reference = Math.sign(cross(corners[0], corners[1], corners[2]));
     return reference && direction && direction !== reference ? count + 1 : count;
   }, 0);
-
-  // A conventional five-point star is self-crossing. Checking intersections first keeps it
-  // from being confused with a cloud or a many-sided polygon.
   if (selfIntersectionCount(corners) >= 3 || (corners.length >= 8 && corners.length <= 12 && concaveTurns >= 4)) return build(ShapeType.Star);
   if (looksLikeHeart(points, x, y, width, height)) return build(ShapeType.Heart);
 
@@ -184,8 +179,6 @@ export const recognizeSmartShape = (rawPoints: number[][], color: Color, strokeW
 
   if (corners.length === 4) {
     const edges = corners.map((corner, index) => vector(corner, corners[(index + 1) % 4]));
-    // A parallelogram can have sides that are generally vertical, so require a much tighter
-    // alignment here. This preserves the visual distinction users expect from a rectangle.
     const topBottomHorizontal = Math.abs(edges[0].y) <= Math.abs(edges[0].x) * 0.18
       && Math.abs(edges[2].y) <= Math.abs(edges[2].x) * 0.18;
     const sidesVertical = Math.abs(edges[1].x) <= Math.abs(edges[1].y) * 0.18
@@ -203,8 +196,6 @@ export const recognizeSmartShape = (rawPoints: number[][], color: Color, strokeW
     if (corners.length === 5) return build(ShapeType.Pentagon);
     if (corners.length === 6) return build(ShapeType.Hexagon);
   }
-  // Circle strokes retain substantially more simplified corners than polygons.
-  // Delaying this test prevents regular pentagons and hexagons becoming ellipses.
   if (corners.length >= 7 && radialVariation < 0.1 && averageRadius > 0.8 && averageRadius < 1.16) return build(ShapeType.Ellipse);
   if (corners.length >= 7 && concaveTurns >= 2) return build(ShapeType.Cloud);
 

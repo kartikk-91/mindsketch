@@ -28,7 +28,6 @@ const isTransparentColor = (c?: Color) =>
 
 const textColorForFill = (color?: Color) => {
   if (isTransparentColor(color)) return "#181C31";
-  // Perceived luminance keeps generated labels readable even on saturated fills.
   const luminance = (0.2126 * color!.r + 0.7152 * color!.g + 0.0722 * color!.b) / 255;
   return luminance < 0.58 ? "#FFFFFF" : "#181C31";
 };
@@ -78,7 +77,7 @@ const highlightCodeLine = (line: string): ReactNode[] => {
   return tokens;
 };
 
-/** Turns an orthogonal polyline into a route with softly rounded corners. */
+
 const roundedOrthogonalPath = (rawPoints: RoutePoint[]) => {
   const points = rawPoints.filter((point, index) => index === 0 || !samePoint(point, rawPoints[index - 1]));
   if (points.length < 2) return "";
@@ -102,7 +101,7 @@ const roundedOrthogonalPath = (rawPoints: RoutePoint[]) => {
   return `${path} L ${end.x} ${end.y}`;
 };
 
-/** The visible centre of several shapes is not the centre of their selection box. */
+
 const shapeTextBounds = (shape: ShapeType, x: number, y: number, width: number, height: number) => {
   const inset = 12;
   const standard = { x: x + inset, y: y + inset, width: Math.max(0, width - inset * 2), height: Math.max(0, height - inset * 2) };
@@ -124,7 +123,7 @@ const shapeTextBounds = (shape: ShapeType, x: number, y: number, width: number, 
   }
 };
 
-/** Place a connector label on its route rather than the bounding-box centre. */
+
 const connectorLabelCenter = (layer: ShapeLayer) => {
   const start = { x: layer.x, y: layer.y };
   const end = { x: layer.x + layer.width, y: layer.y + layer.height };
@@ -186,7 +185,6 @@ export const ShapeRenderer = ({
   const cy = y + height / 2;
   const isOneDimensional = [ShapeType.Line, ShapeType.Arrow, ShapeType.ArrowLeftLine, ShapeType.ArrowBidirectionalLine].includes(shape);
   const isConnector = shape === ShapeType.Arrow && Boolean(layer.startLayerId || layer.endLayerId);
-  // Connectors can carry a label even though regular one-dimensional arrows cannot.
   const supportsShapeText = TEXT_SHAPES.has(shape) || isConnector;
   const shapeCenterY = isOneDimensional
     ? (isConnector ? y + height / 2 : y)
@@ -309,13 +307,10 @@ export const ShapeRenderer = ({
           ? (x2 >= x1 ? 8 : 4)
           : (y2 >= y1 ? 2 : 1);
         const inferredEndSide = inferredStartSide === 4 ? 8 : inferredStartSide === 8 ? 4 : inferredStartSide === 1 ? 2 : 1;
-        // Some arrows created before border-side persistence have no side metadata.
-        // Infer it from the endpoints instead of defaulting to Bottom (which caused a bad target elbow).
         const direction = (side: number) => side === 4 ? { x: -1, y: 0 } : side === 8 ? { x: 1, y: 0 } : side === 1 ? { x: 0, y: -1 } : { x: 0, y: 1 };
         const startDirection = direction(layer.startSide ?? inferredStartSide);
         const endDirection = direction(layer.endSide ?? inferredEndSide);
         const distance = Math.hypot(x2 - x1, y2 - y1);
-        // Each connector visibly leaves the chosen border before it is allowed to turn.
         const stub = Math.min(16, Math.max(8, distance * 0.1));
         const startStub = { x: x1 + startDirection.x * stub, y: y1 + startDirection.y * stub };
         const endStub = { x: x2 + endDirection.x * stub, y: y2 + endDirection.y * stub };
@@ -331,7 +326,6 @@ export const ShapeRenderer = ({
             middle = [{ x: startStub.x, y: middleY }, { x: endStub.x, y: middleY }];
           }
         } else {
-          // One clean elbow is enough for perpendicular sides, matching familiar diagram tools.
           middle = startHorizontal
             ? [{ x: endStub.x, y: startStub.y }]
             : [{ x: startStub.x, y: endStub.y }];
@@ -347,7 +341,6 @@ export const ShapeRenderer = ({
           return `M ${tip.x} ${tip.y} L ${hx1} ${hy1} M ${tip.x} ${tip.y} L ${hx2} ${hy2}`;
         };
         const arrowhead = layer.arrowhead ?? "right";
-        // A head at the source points back into the source border, opposite its exit stub.
         const startAngle = Math.atan2(-startDirection.y, -startDirection.x);
         const labelGapId = `connector-label-gap-${id}`;
         const arrowheads = `${arrowhead !== "left" ? head({ x: x2, y: y2 }, angle) : ""} ${arrowhead !== "right" ? head({ x: x1, y: y1 }, startAngle) : ""}`;
@@ -559,7 +552,7 @@ export const ShapeRenderer = ({
         return <g {...props}><polygon fill={shadeColor(fill, 0.03)} points={`${x + width * .3},${y} ${x + width},${y + height * .22} ${x + width * .7},${y + height * .45} ${x},${y + height * .23}`} /><polygon fill={shadeColor(fill, -0.02)} points={`${x},${y + height * .23} ${x + width * .7},${y + height * .45} ${x + width * .7},${y + height} ${x},${y + height * .78}`} /><polygon fill={shadeColor(fill, -0.04)} points={`${x + width * .7},${y + height * .45} ${x + width},${y + height * .22} ${x + width},${y + height * .77} ${x + width * .7},${y + height}`} /></g>;
       case ShapeType.Pyramid:
         return <g {...props}>
-          {/* Four faces projected as the conventional square-pyramid outline. */}
+          
           <polygon fill={shadeColor(fill, 0.03)} points={`${cx},${y} ${x},${y + height * .74} ${cx},${y + height * .59}`} />
           <polygon fill={shadeColor(fill, -0.02)} points={`${cx},${y} ${cx},${y + height * .59} ${x + width},${y + height * .74}`} />
           <polygon fill={shadeColor(fill, -0.04)} points={`${x},${y + height * .74} ${cx},${y + height} ${cx},${y + height * .59}`} />

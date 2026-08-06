@@ -90,8 +90,6 @@ const createSelectionFrame = (ids: readonly string[], bounds: XYWH, rotation = 0
         ids: [...ids],
         bounds,
         rotation,
-        // The transform is `rotate(rotation)` followed by this translation.
-        // At creation this is equivalent to rotating around the selection centre.
         translation: { x: center.x - rotatedCenter.x, y: center.y - rotatedCenter.y },
     };
 };
@@ -114,7 +112,6 @@ const rotateSelectionFrame = (frame: SelectionFrame, delta: number): SelectionFr
     return {
         ...frame,
         rotation: frame.rotation + delta,
-        // Compose a rotation around the visible selection centre with the frame transform.
         translation: { x: rotatedTranslation.x + center.x - rotatedCenter.x, y: rotatedTranslation.y + center.y - rotatedCenter.y },
     };
 };
@@ -122,7 +119,6 @@ const rotateSelectionFrame = (frame: SelectionFrame, delta: number): SelectionFr
 const closestSide = (from: XYWH & { rotation?: number }, to: XYWH & { rotation?: number }): Side => {
     const fromCenter = { x: from.x + from.width / 2, y: from.y + from.height / 2 };
     const toCenter = { x: to.x + to.width / 2, y: to.y + to.height / 2 };
-    // Pick the nearest border in the source layer's local axes, not the canvas axes.
     const localTarget = rotatePointAround(toCenter.x, toCenter.y, fromCenter.x, fromCenter.y, -(from.rotation ?? 0));
     const dx = localTarget.x - fromCenter.x;
     const dy = localTarget.y - fromCenter.y;
@@ -184,7 +180,6 @@ const syncBoundArrows = (layers: any, ids: readonly string[]) => {
         if (!start || !end) return;
         const startBounds = { x: start.get("x"), y: start.get("y"), width: start.get("width"), height: start.get("height"), rotation: start.get("rotation") ?? 0, shape: start.get("shape") };
         const endBounds = { x: end.get("x"), y: end.get("y"), width: end.get("width"), height: end.get("height"), rotation: end.get("rotation") ?? 0, shape: end.get("shape") };
-        // Connectors follow the nearest facing borders as their shapes move.
         const startSide = arrow.get("startSideLocked")
             ? (arrow.get("startSide") ?? closestSide(startBounds, endBounds))
             : closestSide(startBounds, endBounds);
@@ -193,8 +188,6 @@ const syncBoundArrows = (layers: any, ids: readonly string[]) => {
             : closestSide(endBounds, startBounds);
         const startPoint = connectionPoint(startBounds, startSide);
         const endPoint = connectionPoint(endBounds, endSide);
-        // Bound arrows store world-space endpoints. Keeping the arrow itself unrotated avoids
-        // applying a second transform after its endpoints have been recalculated.
         arrow.update({ startSide, endSide, x: startPoint.x, y: startPoint.y, width: endPoint.x - startPoint.x, height: endPoint.y - startPoint.y, rotation: 0 });
     });
 };
@@ -219,8 +212,6 @@ export const Canvas = ({ boardId, backgroundPattern, colorTheme }: CanvasProps) 
 
 
     const layerIds = useStorage((root) => root.layerIds);
-    // Subscribe to the complete canvas storage, not presence. This deliberately excludes
-    // opening, cursor movement, and selection changes from the "last modified" timestamp.
     const canvasContentVersion = useStorage((root) => JSON.stringify({
         layers: Array.from(root.layers.entries()),
         layerIds: Array.from(root.layerIds),
@@ -391,7 +382,6 @@ export const Canvas = ({ boardId, backgroundPattern, colorTheme }: CanvasProps) 
             if (clone.type === LayerType.Shape && clone.shape === ShapeType.Arrow) {
                 const startId = clone.startLayerId && idMap.get(clone.startLayerId);
                 const endId = clone.endLayerId && idMap.get(clone.endLayerId);
-                // A copied connector only remains bound when both endpoints were copied too.
                 if (startId && endId) {
                     clone.startLayerId = startId;
                     clone.endLayerId = endId;
@@ -416,7 +406,6 @@ export const Canvas = ({ boardId, backgroundPattern, colorTheme }: CanvasProps) 
         const id = nanoid();
         const width = 320;
         const height = 220;
-        // Pasted content belongs where the user is looking, not at a fixed board coordinate.
         const x = (window.innerWidth / 2 - camera.x) / camera.scale - width / 2;
         const y = (window.innerHeight / 2 - camera.y) / camera.scale - height / 2;
         layers.set(id, new LiveObject({ type: LayerType.Image, x, y, width, height, src }) as LiveObject<Layer>);
@@ -478,9 +467,6 @@ export const Canvas = ({ boardId, backgroundPattern, colorTheme }: CanvasProps) 
                 copySelectedLayers();
                 return;
             }
-
-            // Keep ordinary Ctrl/Cmd+V available for text and code from the system clipboard.
-            // Canvas-layer paste remains available as Ctrl/Cmd+Shift+V after copying a layer.
             if (isMod && e.shiftKey && !isEditingText && e.key.toLowerCase() === "v" && clipboard?.length) {
                 e.preventDefault();
                 pasteLayers();
@@ -650,8 +636,6 @@ export const Canvas = ({ boardId, backgroundPattern, colorTheme }: CanvasProps) 
                 x: position.x,
                 y: position.y,
                 width: isCode ? 560 : 120,
-                // Lines have no invisible height: this keeps their handles and
-                // rotation pivot on the visible stroke.
                 height: isCode ? 260 : isOneDimensional ? 0 : 80,
                 fill: isCode ? undefined : undefined,
                 stroke: isCode ? undefined : defaultStroke,
@@ -1177,11 +1161,9 @@ export const Canvas = ({ boardId, backgroundPattern, colorTheme }: CanvasProps) 
             insertPath();
         }
         else if (canvasState.mode === CanvasMode.Erasing) {
-            // Keep the eraser selected after either an erased path or an empty-canvas click.
             erasedLayerIds.current.clear();
         }
         else if (canvasState.mode === CanvasMode.Connecting) {
-            // Connector mode stays active until the user presses Escape or picks another tool.
         }
         else if (canvasState.mode === CanvasMode.Inserting) {
             if (

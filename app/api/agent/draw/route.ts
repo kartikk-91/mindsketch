@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextRequest } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 
@@ -14,8 +15,6 @@ type DrawOperation = {
   chart?: { type: "bar" | "pie" | "area" | "donut"; title?: string; data: Array<{ label: string; value: number; color?: string }> };
   connect?: { from: string; to: string };
 };
-
-// Use the current Flash endpoint; Gemini 2.5 Flash returns 404 for new API users.
 const MODEL = "gemini-3-flash-preview";
 const MAX_OPERATIONS = 48;
 const FREE_KEY_ATTEMPTS = 5;
@@ -93,8 +92,6 @@ function normalizeOperation(value: unknown): DrawOperation | null {
     style: { fill: color(raw.style?.fill, "59,130,246"), stroke: color(raw.style?.stroke, "30,30,40"), strokeWidth: Math.max(1, Math.min(8, finite(raw.style?.strokeWidth, 2))) },
   };
   if (typeof raw.content === "string") result.content = raw.content.slice(0, 500);
-  // Base rectangle/ellipse layers are visual-only in the canvas. Upgrade labelled
-  // diagram nodes to Shape layers, whose renderer owns a proper text label.
   if ((result.layerType === "Rectangle" || result.layerType === "Ellipse") && result.content?.trim()) {
     result.shapeType = result.layerType;
     result.layerType = "Shape";
@@ -138,7 +135,6 @@ async function createPlan(prompt: string, image?: CanvasImage, viewport?: DrawRe
       }
       const providerError = await response.text();
       lastFailure = `HTTP ${response.status}`;
-      // Keep the provider's real diagnostic in server logs; never expose it to the board UI.
       console.warn(`[draw-ai] ${key.source} planner key attempt ${attempt + 1}/${keys.length} (${key.name}) failed (${response.status}): ${providerError}`);
     } catch (error) {
       lastFailure = error instanceof Error ? error.message : "Network error";
@@ -149,8 +145,6 @@ async function createPlan(prompt: string, image?: CanvasImage, viewport?: DrawRe
     console.error(`[draw-ai] planner unavailable after free-key rotation and paid fallback: ${lastFailure}`);
     throw new Error("Drawing AI is temporarily unavailable. Please try again in a moment.");
   }
-  // A missing or uniform model palette used to turn every generated node blue. Give
-  // a composition a readable, differentiated palette even when the model omits style.
   const visualNodes = operations.filter((operation) => ["Rectangle", "Ellipse", "Note", "Shape"].includes(operation.layerType) && !(operation.layerType === "Shape" && operation.shapeType === "Arrow"));
   const fills = new Set(visualNodes.map((operation) => operation.style?.fill).filter(Boolean));
   if (visualNodes.length > 2 && fills.size <= 1) {

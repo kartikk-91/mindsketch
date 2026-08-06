@@ -171,8 +171,6 @@ export const SelectionTools = memo(
             liveLayer.set("fill", color);
             return;
           }
-
-          // "No fill" means transparent interior, never an invisible shape.
           liveLayer.delete("fill");
           const type = liveLayer.get("type");
           const shape = liveLayer.get("shape");
@@ -202,11 +200,9 @@ export const SelectionTools = memo(
               strokeWidth: 2,
             });
           } else if (liveLayer.get("fill") && liveLayer.get("fill").r !== -1) {
-            // A filled shape may intentionally have no border.
             liveLayer.delete("stroke");
             liveLayer.set("strokeWidth", 0);
           } else {
-            // An unfilled shape must remain visible; its default is a black outline.
             liveLayer.update({
               stroke: DEFAULT_STROKE,
               strokeWidth: 2,

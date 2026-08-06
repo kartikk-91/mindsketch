@@ -1,9 +1,6 @@
 import { captureFrame } from "@/lib/export-canvas";
 
 const CHAT_IMAGE_LONG_SIDE = 1024;
-// Groq's vision endpoint accepts large image URLs but caps inline base64 request bodies far
-// lower. We stay comfortably under that (and under typical framework body-size limits) by
-// targeting ~3MB of base64 and shrinking further if a single pass isn't enough.
 const MAX_BASE64_BYTES = 3 * 1024 * 1024;
 const MIN_LONG_SIDE = 480;
 
@@ -79,7 +76,7 @@ export async function getFrameBase64(): Promise<string | null> {
   return dataUrl?.replace(/^data:image\/png;base64,/, "") ?? null;
 }
 
-/** Lower-resolution JPEG capture for frame chat. */
+
 export async function getFrameForChat(): Promise<{ imageBase64: string; mimeType: string } | null> {
   const dataUrl = await captureFrame("jpeg", 0.76);
   if (!dataUrl) return null;

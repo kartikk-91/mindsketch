@@ -64,15 +64,15 @@ export type ShapeLayer = {
     strokeWidth?: number;
     dashed?: boolean;
     opacity?: number;
-    /** Present only on arrows created with the connector tool. */
+    
     startLayerId?: string;
     endLayerId?: string;
     startSide?: Side;
     endSide?: Side;
-    /** Set only when the user explicitly chooses a connector port. */
+    
     startSideLocked?: boolean;
     endSideLocked?: boolean;
-    /** Arrowhead arrangement used by connector arrows. */
+    
     arrowhead?: "right" | "left" | "both";
 
     rotation?: number;

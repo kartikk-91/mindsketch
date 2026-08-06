@@ -30,8 +30,6 @@ export function extractCanvasContext(layers: Map<string, Layer>): CanvasContext 
   for (const [id, layer] of layers.entries()) {
     const summary = layerToSummary(id, layer);
     layerSummaries.push(summary);
-
-    // Update bounds
     minX = Math.min(minX, summary.x);
     minY = Math.min(minY, summary.y);
     maxX = Math.max(maxX, summary.x + summary.width);
@@ -63,8 +61,6 @@ function layerToSummary(id: string, layer: Layer): LayerSummary {
     height: layer.height,
     hasContent: false,
   };
-
-  // Add type-specific information
   switch (layer.type) {
     case LayerType.Shape:
       return {
@@ -119,8 +115,6 @@ export function formatContextForAgent(context: CanvasContext): string {
   const lines = [
     `The canvas contains ${context.layerCount} element(s):`,
   ];
-
-  // Group by type
   const byType = new Map<LayerType, LayerSummary[]>();
   for (const layer of context.layers) {
     if (!byType.has(layer.type)) {
@@ -128,14 +122,10 @@ export function formatContextForAgent(context: CanvasContext): string {
     }
     byType.get(layer.type)!.push(layer);
   }
-
-  // Describe each type
   for (const [type, layers] of byType.entries()) {
     const count = layers.length;
     const typeName = type.toString().toLowerCase();
     lines.push(`- ${count} ${typeName}(s)`);
-
-    // Add brief details for text-containing layers
     const withContent = layers.filter(l => l.hasContent && l.contentPreview);
     if (withContent.length > 0 && withContent.length <= 5) {
       for (const layer of withContent) {
@@ -143,8 +133,6 @@ export function formatContextForAgent(context: CanvasContext): string {
       }
     }
   }
-
-  // Add bounds information
   if (context.bounds) {
     lines.push(`\nCanvas bounds: ${context.bounds.width}x${context.bounds.height} at (${context.bounds.x}, ${context.bounds.y})`);
   }
@@ -169,8 +157,6 @@ export function findAvailablePosition(
   if (!bounds) {
     return preferredPosition || { x: 100, y: 100 };
   }
-
-  // If preferred position is provided, check if it's available
   if (preferredPosition) {
     const overlaps = checkOverlap(
       preferredPosition.x,
@@ -183,8 +169,6 @@ export function findAvailablePosition(
       return preferredPosition;
     }
   }
-
-  // Find space to the right of existing content
   const suggestedX = bounds.x + bounds.width + 50;
   const suggestedY = bounds.y;
 
@@ -208,8 +192,6 @@ function checkOverlap(
     const layerBottom = layer.y + layer.height + padding;
     const right = x + width + padding;
     const bottom = y + height + padding;
-
-    // Check for overlap
     if (!(right < layer.x || x > layerRight || bottom < layer.y || y > layerBottom)) {
       return true;
     }

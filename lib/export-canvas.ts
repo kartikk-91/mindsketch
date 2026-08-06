@@ -24,7 +24,6 @@ async function inlineImages(root: SVGSVGElement) {
       });
       image.setAttribute("href", dataUrl);
     } catch {
-      // A remote image without CORS support should not prevent the rest of a board exporting.
     }
   }));
 }
@@ -132,10 +131,6 @@ function createExportSvg(): { root: HTMLDivElement; svg: SVGSVGElement; width: n
   svg.setAttribute("aria-hidden", "true");
   svg.style.display = "block";
   svg.style.background = "#ffffff";
-
-  // dom-to-image-more reliably rasterizes HTML roots containing SVG, but can fail when it is
-  // given a detached SVG fragment directly (notably when that fragment contains foreignObject
-  // sticky notes). Keep the SVG isolated and cropped, then render it through an HTML surface.
   const root = document.createElement("div");
   root.style.position = "fixed";
   root.style.left = "-100000px";
@@ -166,9 +161,6 @@ function createExportSvg(): { root: HTMLDivElement; svg: SVGSVGElement; width: n
   });
 
   flattenShapeLabelsForExport(layers);
-
-  // ContentEditable controls are useful on the board, but a browser scrollbar or focus ring
-  // must never become part of a static export.
   layers.querySelectorAll<SVGElement>("foreignObject").forEach((element) => {
     element.style.outline = "none";
     element.style.border = "none";
@@ -189,8 +181,6 @@ function createExportSvg(): { root: HTMLDivElement; svg: SVGSVGElement; width: n
     element.style.border = "none";
     element.style.overflow = "hidden";
   });
-
-  // Keep sticky-note fills and text intact, but remove editor-only adornments from the output.
   layers.querySelectorAll(".drop-shadow-md").forEach((element) => element.classList.remove("drop-shadow-md"));
   layers.querySelectorAll("*").forEach((element) => {
     const htmlElement = element as HTMLElement;
@@ -271,8 +261,6 @@ export async function captureFrameForAgent(
 ): Promise<string | null> {
   const capture = createExportSvg();
   if (!capture) return null;
-
-  // Calculate scale to fit within maxDimension
   const scale = Math.min(1, maxDimension / Math.max(capture.width, capture.height));
 
   try {

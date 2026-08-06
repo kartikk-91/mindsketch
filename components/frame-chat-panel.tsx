@@ -27,8 +27,6 @@ type FrameChatSession = {
   isFirstReply: boolean;
   messages: ChatMessage[];
 };
-
-// Preserved when the panel closes, but reset automatically by a browser reload.
 const frameChatSessions = new Map<string, FrameChatSession>();
 
 function getSession(boardId: string): FrameChatSession {
@@ -53,8 +51,6 @@ export const FrameChatPanel = ({ boardId, isOpen, initialMode = "chat", viewport
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [dragActive, setDragActive] = useState(false);
-  
-  // Agent drawing hook with canvas mutation
   const insertLayer = useMutation(
     ({ storage }, params: CreateLayerParams) => {
       const liveLayers = storage.get("layers");
@@ -97,8 +93,6 @@ export const FrameChatPanel = ({ boardId, isOpen, initialMode = "chat", viewport
   );
 
   const { generateDrawing, isProcessing: isAgentProcessing, messages: agentMessages, error: agentError } = useAgentDraw(insertLayer);
-  // The very first reply has to run a vision pass plus a completion, so it is
-  // meaningfully slower than every follow-up. We only want to warn about that once.
   const [isFirstReply, setIsFirstReply] = useState(initialSession.isFirstReply);
   const [hasStarted, setHasStarted] = useState(initialSession.hasStarted);
   const [restartNonce, setRestartNonce] = useState(0);
@@ -199,7 +193,6 @@ export const FrameChatPanel = ({ boardId, isOpen, initialMode = "chat", viewport
         const capture = await getFrameForChat();
         if (!capture || cancelled) throw new Error("I couldn't capture this board. Please try again.");
         const image: ChatImage = { ...capture, previewUrl: `data:${capture.mimeType};base64,${capture.imageBase64}`, name: "Current board" };
-        // The open-weight vision model analyzes this frame once; follow-ups reuse that analysis.
         await sendMessage(INITIAL_QUESTION, image, false, true);
       } catch (cause) {
         if (!cancelled) {
@@ -210,10 +203,7 @@ export const FrameChatPanel = ({ boardId, isOpen, initialMode = "chat", viewport
     }
     void startFrameChat();
     return () => { cancelled = true; };
-    // This runs only for a new session or an explicit restart. `sendMessage` uses the empty
-    // history for the opening prompt.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode, restartNonce]);
+  }, [boardId, hasStarted, mode, restartNonce, sendMessage]);
 
   const restartChat = () => {
     frameChatSessions.delete(boardId);

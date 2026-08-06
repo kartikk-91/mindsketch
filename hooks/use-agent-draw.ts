@@ -31,7 +31,6 @@ export function useAgentDraw(insertLayerFn?: (params: CreateLayerParams) => Prom
       generatedLayerIds.current.clear();
 
       try {
-        // Capture canvas state if requested
         let imageData;
         if (includeCanvas) {
           const capture = await captureFrameForAgentWithValidation(1024);
@@ -57,8 +56,6 @@ export function useAgentDraw(insertLayerFn?: (params: CreateLayerParams) => Prom
           const errorData = await response.json();
           throw new Error(errorData.error || "Failed to generate drawing");
         }
-
-        // Process streaming response
         const reader = response.body?.getReader();
         const decoder = new TextDecoder();
         let buffer = "";
@@ -96,8 +93,6 @@ export function useAgentDraw(insertLayerFn?: (params: CreateLayerParams) => Prom
                 setError(detail);
                 return false;
               }
-
-              // Execute tool calls
               if (message.type === "tool_call" && message.toolCall) {
                 try {
                   await executeToolCall(message.toolCall);
@@ -132,9 +127,6 @@ export function useAgentDraw(insertLayerFn?: (params: CreateLayerParams) => Prom
     async (toolCall: { name: string; parameters: Record<string, unknown> }) => {
       if (toolCall.name === "create_layer" && insertLayerFn) {
         try {
-          // Convert planner enum names to the application's actual enum values.
-          // Keep this tied to the source enum: hand-written number maps had drifted and
-          // inserted rectangles as text layers (or rejected them) instead.
           const params = toolCall.parameters as any;
           const operationId = typeof params.id === "string" ? params.id : undefined;
           if (params.connect) {
@@ -160,7 +152,6 @@ export function useAgentDraw(insertLayerFn?: (params: CreateLayerParams) => Prom
           throw err;
         }
       }
-      // Add other tool handlers here as needed
     },
     [insertLayerFn]
   );

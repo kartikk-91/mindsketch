@@ -47,7 +47,7 @@ function normalizeModelMarkup(value: string) {
     .replace(/&gt;/gi, ">");
 }
 
-/** Small, safe Markdown renderer for model output-no raw HTML is injected into the board. */
+
 export function MarkdownContent({ content }: { content: string }) {
   const lines = normalizeModelMarkup(content).split("\n");
   const nodes: React.ReactNode[] = [];

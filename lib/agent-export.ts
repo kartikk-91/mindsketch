@@ -10,9 +10,6 @@ export type QualityLevel = "high" | "medium" | "low";
 function estimateMinimumCharacterHeight(dataUrl: string): number {
   const image = new Image();
   image.src = dataUrl;
-  
-  // For now, return a conservative estimate based on image dimensions
-  // In production, this would analyze actual text regions
   const canvas = document.createElement("canvas");
   const ctx = canvas.getContext("2d");
   if (!ctx) return 16; // fallback
@@ -20,9 +17,6 @@ function estimateMinimumCharacterHeight(dataUrl: string): number {
   canvas.width = image.naturalWidth || 1024;
   canvas.height = image.naturalHeight || 768;
   ctx.drawImage(image, 0, 0);
-  
-  // Estimate based on typical canvas text sizing (14-24px at 1x scale)
-  // This is a heuristic - actual implementation would use OCR
   const estimatedHeight = 18; // conservative estimate
   return estimatedHeight;
 }
@@ -36,14 +30,10 @@ export async function captureFrameForAgentWithValidation(
 ): Promise<{ dataUrl: string; quality: QualityLevel } | null> {
   const dataUrl = await captureFrameForAgent("jpeg", maxDimension);
   if (!dataUrl) return null;
-
-  // Check text readability by sampling character height
   const textHeight = estimateMinimumCharacterHeight(dataUrl);
   const quality: QualityLevel = 
     textHeight >= 20 ? "high" : 
     textHeight >= 15 ? "medium" : "low";
-
-  // If quality is low, increase resolution for this capture
   if (quality === "low" && maxDimension < 2048) {
     console.log("Quality low, increasing resolution to", maxDimension * 1.5);
     return captureFrameForAgentWithValidation(Math.round(maxDimension * 1.5));
@@ -65,9 +55,5 @@ export function dataUrlToBase64(dataUrl: string): string {
 export function getImageDimensions(dataUrl: string): { width: number; height: number } {
   const match = dataUrl.match(/^data:image\/[a-z]+;base64,/);
   if (!match) return { width: 1024, height: 768 };
-  
-  // Parse base64 header for dimensions if available
-  // For JPEG, dimensions are in the first few bytes
-  // This is a simplified version - production would parse properly
   return { width: 1024, height: 768 };
 }

@@ -160,7 +160,7 @@ export default function Page() {
 
   return (
     <div className="flex h-screen w-full overflow-hidden bg-white lg:grid lg:grid-cols-2">
-      {/* LEFT: brand / marketing panel — hidden below lg, no scroll needed */}
+      
       <div className="relative hidden flex-col justify-center overflow-hidden bg-[#F6F8F1] px-12 py-10 lg:flex xl:px-16">
         <div className="absolute left-10 top-8 flex items-center gap-2 xl:left-14">
           <Image src="/logo-em.png" alt="Mindsketch" width={50} height={50} />
@@ -201,7 +201,7 @@ export default function Page() {
         </div>
       </div>
 
-      {/* RIGHT: form panel */}
+      
       <div className="flex h-full flex-col overflow-y-auto px-6 py-6 sm:px-10 lg:justify-center lg:overflow-visible lg:px-12 xl:px-20">
         <div className="mx-auto flex w-full max-w-sm flex-1 flex-col justify-center lg:flex-none">
           <div className="mb-5 flex items-center gap-2 lg:hidden">

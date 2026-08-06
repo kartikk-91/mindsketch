@@ -7,7 +7,7 @@ type ChatImage = { imageBase64: string; mimeType: string };
 interface FrameChatRequest {
   messages: ChatMessage[];
   image?: ChatImage;
-  /** Analysis is held by the open chat session so follow-ups never need a second vision call. */
+  
   imageAnalysis?: string;
   forceAnalysis?: boolean;
 }
@@ -15,11 +15,6 @@ interface FrameChatRequest {
 const IMAGE_ANALYSIS_PROMPT = `Analyze this MindSketch board for another assistant. Produce a compact but information-rich board brief: visible text and labels, objects and their relationships, layout, flow/diagram meaning, notable gaps or errors, and any relevant image content. Be precise. This brief will be the only visual context supplied to the chat model.`;
 
 const CHAT_SYSTEM_PROMPT = "You are a helpful assistant discussing a MindSketch board. Be clear and practical. Use the supplied image analysis when it is relevant, but do not claim to see information that is not in it.";
-
-// Gemini handles visual understanding once. Groq receives only that retained board brief and
-// answers the whole conversation, avoiding repeated image uploads on follow-up questions.
-// `gemini-2.5-flash` is listed for older projects but returns a 404 for new API
-// consumers. This current Flash model is vision-capable and available to this key.
 const GEMINI_VISION_MODEL = "gemini-3-flash-preview";
 const GROQ_MODEL = "openai/gpt-oss-20b";
 const GEMINI_FREE_KEY_NAMES = Array.from({ length: 15 }, (_, index) => `GEMINI_API_KEY_F${index + 1}`);
@@ -123,7 +118,7 @@ function groqMessages(messages: ChatMessage[], imageAnalysis?: string) {
   ];
 }
 
-/** Streams Groq's OpenAI-compatible SSE response as plain message deltas. */
+
 async function streamGroq(messages: ChatMessage[], imageAnalysis: string | undefined, emit: (type: string, value: string) => void) {
   const keys = providerKeys(GROQ_FREE_KEY_NAMES, "GROQ_API_KEY", GROQ_FREE_KEY_NAMES.length, "Groq");
   let response: Response | undefined;
@@ -173,7 +168,6 @@ async function streamGroq(messages: ChatMessage[], imageAnalysis: string | undef
         const delta = JSON.parse(payload).choices?.[0]?.delta?.content;
         if (delta) emit("token", delta);
       } catch {
-        // Ignore keep-alives or malformed provider events and continue the stream.
       }
     }
     if (done) return;
@@ -197,8 +191,6 @@ export async function POST(req: NextRequest) {
     async start(controller) {
       const emit = (type: string, value: string) => controller.enqueue(event(type, value));
       try {
-        // Vision runs once per board session. The client retains this analysis for all later
-        // questions, so neither the screenshot nor the vision model is sent again.
         let imageAnalysis = body.imageAnalysis;
         if (body.image && (!imageAnalysis || body.forceAnalysis)) {
           emit("status", "Understanding the image…");
