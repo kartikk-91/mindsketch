@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
@@ -26,6 +25,7 @@ import { useDeleteLayers } from "@/hooks/use-delete-layers";
 import ShareActions from "./share-actions";
 import { recognizeSmartShape } from "@/lib/smart-shapes";
 import { boardThemes, type BackgroundPattern, type ColorTheme } from "@/lib/board-appearance";
+import { FrameChatPanel } from "@/components/frame-chat-panel";
 
 
 
@@ -245,8 +245,14 @@ export const Canvas = ({ boardId, backgroundPattern, colorTheme }: CanvasProps) 
     const [lastUsedColor, setLastUsedColor] = useState<Color>(defaultStroke);
     const [penSize, setPenSize] = useState(8);
     const [smartDrawing, setSmartDrawing] = useState(false);
-    const BLACK: Color = { r: 0, g: 0, b: 0 };
-    ;
+    const [drawWithAiOpen, setDrawWithAiOpen] = useState(false);
+    const visibleViewport = {
+        x: Math.round(-camera.x / camera.scale),
+        y: Math.round(-camera.y / camera.scale),
+        width: Math.round((typeof window === "undefined" ? 1440 : window.innerWidth) / camera.scale),
+        height: Math.round((typeof window === "undefined" ? 900 : window.innerHeight) / camera.scale),
+    };
+    
 
     function resolveColor(
         color?: Color,
@@ -1389,6 +1395,7 @@ export const Canvas = ({ boardId, backgroundPattern, colorTheme }: CanvasProps) 
                 setPenColor={setLastUsedColor}
                 smartDrawing={smartDrawing}
                 setSmartDrawing={setSmartDrawing}
+                onDrawWithAi={() => setDrawWithAiOpen(true)}
             />
 
             <SelectionTools
@@ -1397,6 +1404,7 @@ export const Canvas = ({ boardId, backgroundPattern, colorTheme }: CanvasProps) 
                 canvasState={canvasState}
             />
             <ShareActions id={boardId} />
+            {drawWithAiOpen && <FrameChatPanel boardId={boardId} isOpen initialMode="draw" viewport={visibleViewport} onClose={() => setDrawWithAiOpen(false)} />}
             {canvasState.mode === CanvasMode.Inserting &&
                 canvasState.layertype === LayerType.Image && (
                     <div className="absolute top-3 left-1/2 -translate-x-1/2 bg-black text-white text-sm px-3 py-1 rounded">

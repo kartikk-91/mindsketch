@@ -62,6 +62,55 @@ function getVisibleContentBounds(sourceLayers: SVGGElement): DOMRect | null {
   return new DOMRect(left, top, right - left, bottom - top);
 }
 
+/** Replace HTML shape labels with SVG text in the export clone.
+ * `foreignObject` layout is the source of the nested borders/scroll artifacts in PNG exports. */
+function flattenShapeLabelsForExport(layers: SVGGElement) {
+  const namespace = "http://www.w3.org/2000/svg";
+  layers.querySelectorAll<SVGForeignObjectElement>("foreignObject[data-export-shape-text]").forEach((foreignObject) => {
+    const label = foreignObject.textContent?.replace(/\s+/g, " ").trim();
+    if (!label) {
+      foreignObject.remove();
+      return;
+    }
+    const x = Number(foreignObject.getAttribute("x") ?? 0);
+    const y = Number(foreignObject.getAttribute("y") ?? 0);
+    const width = Number(foreignObject.getAttribute("width") ?? 0);
+    const height = Number(foreignObject.getAttribute("height") ?? 0);
+    const htmlLabel = foreignObject.querySelector<HTMLElement>("div, textarea, span");
+    const fontSize = Number.parseFloat(htmlLabel?.style.fontSize || "14") || 14;
+    const color = htmlLabel?.style.color || "#181C31";
+    const text = document.createElementNS(namespace, "text");
+    text.setAttribute("x", String(x + width / 2));
+    text.setAttribute("y", String(y + height / 2));
+    text.setAttribute("fill", color);
+    text.setAttribute("font-family", htmlLabel?.style.fontFamily || "Inter, Arial, sans-serif");
+    text.setAttribute("font-size", String(fontSize));
+    text.setAttribute("font-weight", htmlLabel?.style.fontWeight || "500");
+    text.setAttribute("text-anchor", "middle");
+    text.setAttribute("dominant-baseline", "middle");
+    text.setAttribute("pointer-events", "none");
+    const words = label.split(" ");
+    const maxChars = Math.max(8, Math.floor(width / Math.max(fontSize * 0.56, 1)));
+    const lines: string[] = [];
+    let line = "";
+    words.forEach((word) => {
+      const candidate = line ? `${line} ${word}` : word;
+      if (candidate.length > maxChars && line) { lines.push(line); line = word; }
+      else line = candidate;
+    });
+    if (line) lines.push(line);
+    const visibleLines = lines.slice(0, Math.max(1, Math.floor(height / (fontSize * 1.25))));
+    visibleLines.forEach((value, index) => {
+      const tspan = document.createElementNS(namespace, "tspan");
+      tspan.setAttribute("x", String(x + width / 2));
+      tspan.setAttribute("dy", index === 0 ? String(-(visibleLines.length - 1) * fontSize * 0.62) : String(fontSize * 1.25));
+      tspan.textContent = value;
+      text.appendChild(tspan);
+    });
+    foreignObject.replaceWith(text);
+  });
+}
+
 function createExportSvg(): { root: HTMLDivElement; svg: SVGSVGElement; width: number; height: number } | null {
   const sourceLayers = document.getElementById("export-layers") as SVGGElement | null;
   if (!sourceLayers) return null;
@@ -115,6 +164,8 @@ function createExportSvg(): { root: HTMLDivElement; svg: SVGSVGElement; width: n
   layers.querySelectorAll<HTMLElement>("[data-export-selected]").forEach((element) => {
     element.style.outline = "none";
   });
+
+  flattenShapeLabelsForExport(layers);
 
   // ContentEditable controls are useful on the board, but a browser scrollbar or focus ring
   // must never become part of a static export.
@@ -207,4 +258,39 @@ export async function exportFramePDF() {
   });
   pdf.addImage(image, "PNG", 0, 0, image.width, image.height);
   pdf.save("mindsketch-board.pdf");
+}
+
+
+/**
+ * Agent-optimized export with dynamic scaling for efficient API transmission.
+ * Reduces image size from 5-10MB to 100-300KB while maintaining vision quality.
+ */
+export async function captureFrameForAgent(
+  format: ExportFormat = "jpeg",
+  maxDimension: number = 1024
+): Promise<string | null> {
+  const capture = createExportSvg();
+  if (!capture) return null;
+
+  // Calculate scale to fit within maxDimension
+  const scale = Math.min(1, maxDimension / Math.max(capture.width, capture.height));
+
+  try {
+    await inlineImages(capture.svg);
+    const options = {
+      bgcolor: "#ffffff",
+      width: capture.width,
+      height: capture.height,
+      scale: scale, // Dynamic scale instead of hardcoded 2
+      cacheBust: true,
+    };
+    return format === "png"
+      ? await domtoimage.toPng(capture.root, options)
+      : await domtoimage.toJpeg(capture.root, { ...options, quality: 0.7 });
+  } catch (error) {
+    console.error("Agent frame export failed", error);
+    return null;
+  } finally {
+    capture.root.remove();
+  }
 }

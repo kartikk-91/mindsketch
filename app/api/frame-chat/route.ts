@@ -12,14 +12,15 @@ interface FrameChatRequest {
   forceAnalysis?: boolean;
 }
 
-const IMAGE_ANALYSIS_PROMPT = `You are an image understanding engine. Analyze the image thoroughly. Return structured markdown containing: ## OCR (extract every visible text exactly) ## Objects (list every object with location) ## UI Elements (buttons, icons, menus, inputs, windows) ## Errors (any error messages or warnings) ## Tables (extract all tables) ## Charts (explain charts) ## Code (extract visible code exactly) ## Layout (describe positions of important elements) ## Important Context (anything that could become useful later). Do not summarize. Be exhaustive.`;
+const IMAGE_ANALYSIS_PROMPT = `Analyze this MindSketch board for another assistant. Produce a compact but information-rich board brief: visible text and labels, objects and their relationships, layout, flow/diagram meaning, notable gaps or errors, and any relevant image content. Be precise. This brief will be the only visual context supplied to the chat model.`;
 
 const CHAT_SYSTEM_PROMPT = "You are a helpful assistant discussing a MindSketch board. Be clear and practical. Use the supplied image analysis when it is relevant, but do not claim to see information that is not in it.";
 
-// Both models are open-weight models served through Groq's OpenAI-compatible API. Llama 4
-// Scout handles the board image once, while GPT-OSS answers the rest of the conversation from
-// that retained analysis.
-const VISION_MODEL = "meta-llama/llama-4-scout-17b-16e-instruct";
+// Gemini handles visual understanding once. Groq receives only that retained board brief and
+// answers the whole conversation, avoiding repeated image uploads on follow-up questions.
+// `gemini-2.5-flash` is listed for older projects but returns a 404 for new API
+// consumers. This current Flash model is vision-capable and available to this key.
+const GEMINI_VISION_MODEL = "gemini-3.5-flash-lite";
 const GROQ_MODEL = "openai/gpt-oss-20b";
 
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
@@ -46,30 +47,25 @@ function friendlyError() {
 }
 
 async function analyzeImage(image: ChatImage): Promise<string> {
-  if (!process.env.GROQ_API_KEY) throw new Error("Groq is not configured");
-  const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+  if (!process.env.GEMINI_API_KEY) throw new Error("Gemini is not configured");
+  const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_VISION_MODEL}:generateContent?key=${process.env.GEMINI_API_KEY}`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
-    },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      model: VISION_MODEL,
-      messages: [{
+      contents: [{
         role: "user",
-        content: [
-          { type: "text", text: IMAGE_ANALYSIS_PROMPT },
-          { type: "image_url", image_url: { url: `data:${image.mimeType};base64,${image.imageBase64}` } },
+        parts: [
+          { text: IMAGE_ANALYSIS_PROMPT },
+          { inlineData: { mimeType: image.mimeType, data: image.imageBase64 } },
         ],
       }],
-      temperature: 0.1,
-      max_completion_tokens: 8192,
+      generationConfig: { temperature: 0.15, maxOutputTokens: 4096 },
     }),
   });
-  if (!response.ok) throw new Error(`Vision request failed (${response.status})`);
+  if (!response.ok) throw new Error(`Gemini vision request failed (${response.status})`);
   const payload = await response.json();
-  const analysis = payload.choices?.[0]?.message?.content;
-  if (!analysis) throw new Error("Vision model returned no image analysis");
+  const analysis = payload.candidates?.[0]?.content?.parts?.map((part: { text?: string }) => part.text ?? "").join("");
+  if (!analysis) throw new Error("Gemini returned no board brief");
   return analysis;
 }
 

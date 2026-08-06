@@ -50,6 +50,7 @@ import {
 import { useRef, useState, useEffect } from "react";
 import { BlockArrowBidirectionalIcon, BlockArrowLeftIcon, BlockArrowRightIcon, CylinderIcon, ParallelogramIcon, PentagonIcon } from "./shape.icons";
 import { useImageUpload } from "@/hooks/use-image-upload";
+import { Hint } from "@/components/hint";
 
 interface ToolbarProps {
   canvasState: CanvasState;
@@ -68,6 +69,7 @@ interface ToolbarProps {
   setPenColor: (color: { r: number; g: number; b: number }) => void;
   smartDrawing: boolean;
   setSmartDrawing: (enabled: boolean) => void;
+  onDrawWithAi: () => void;
 }
 
 
@@ -87,6 +89,7 @@ export const Toolbar = ({
   setPenColor,
   smartDrawing,
   setSmartDrawing,
+  onDrawWithAi,
 }: ToolbarProps) => {
 
   const shapePopoverRef = useRef<HTMLDivElement>(null);
@@ -138,6 +141,10 @@ export const Toolbar = ({
     <>
       <div className="absolute top-1/2 left-4 z-20 -translate-y-1/2 flex flex-col gap-3">
         <div className="board-surface relative flex flex-col items-center gap-1 rounded-2xl border border-neutral-200/80 bg-white/95 p-1.5 shadow-[0_12px_32px_rgba(15,23,42,0.12)] backdrop-blur">
+          <Hint label="Draw with AI" side="right" sideOffset={14}>
+            <button onClick={onDrawWithAi} aria-label="Draw with AI" className="group relative flex h-10 w-10 items-center justify-center overflow-hidden rounded-xl bg-[linear-gradient(135deg,#20C5A8_0%,#6F8DFF_52%,#FFB800_100%)] text-white shadow-[0_5px_14px_rgba(32,197,168,0.35)] transition hover:scale-105 hover:shadow-[0_8px_20px_rgba(111,141,255,0.42)] active:scale-95"><span className="absolute inset-[1px] rounded-[11px] bg-white/10" /><WandSparkles className="relative h-[18px] w-[18px]" /></button>
+          </Hint>
+          <div className="h-px w-7 bg-neutral-200" />
           <ToolButton
             label="Select"
             icon={MousePointer2}
@@ -251,7 +258,7 @@ export const Toolbar = ({
             isActive={canvasState.mode === CanvasMode.Pencil}
           />
           <ToolButton
-            label="Connect"
+            label="Connect shapes"
             icon={GitFork}
             onClick={() => setCanvasState({ mode: CanvasMode.Connecting })}
             isActive={canvasState.mode === CanvasMode.Connecting}
@@ -307,7 +314,7 @@ export const Toolbar = ({
           {canvasState.sourceId ? "Choose a second shape to connect" : "Choose the first shape to connect"}
         </div>
       )}
-      <div className="board-surface absolute bottom-5 right-4 flex flex-col items-center rounded-2xl border border-neutral-200/80 bg-white/95 p-1.5 shadow-[0_12px_32px_rgba(15,23,42,0.1)] backdrop-blur">
+      <div className="board-surface absolute bottom-16 right-4 flex flex-col items-center rounded-2xl border border-neutral-200/80 bg-white/95 p-1.5 shadow-[0_12px_32px_rgba(15,23,42,0.1)] backdrop-blur">
         <ToolButton
           label="Zoom In"
           icon={ZoomIn}

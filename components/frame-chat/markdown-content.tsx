@@ -12,9 +12,44 @@ function inline(value: string) {
 const isTableRow = (line: string) => /^\s*\|.*\|\s*$/.test(line);
 const cells = (line: string) => line.trim().slice(1, -1).split("|").map((cell) => cell.trim());
 
+function plainHtml(value: string) {
+  return value
+    .replace(/<br\s*\/?>(\r?\n)?/gi, " ")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">");
+}
+
+/** Models occasionally return HTML despite asking for Markdown. Convert the safe common
+ * subset before rendering so literal tags never leak into chat bubbles. */
+function normalizeModelMarkup(value: string) {
+  const withTables = value.replace(/<table[^>]*>([\s\S]*?)<\/table>/gi, (_table: string, tableHtml: string) => {
+    const rows = Array.from(tableHtml.matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/gi)).map((row: RegExpMatchArray) =>
+      Array.from(row[1].matchAll(/<t[hd][^>]*>([\s\S]*?)<\/t[hd]>/gi)).map((cell: RegExpMatchArray) => plainHtml(cell[1]).trim())
+    ).filter((row) => row.length);
+    if (!rows.length) return "";
+    const header = rows[0];
+    return `\n| ${header.join(" | ")} |\n| ${header.map(() => "---").join(" | ")} |\n${rows.slice(1).map((row) => `| ${row.join(" | ")} |`).join("\n")}\n`;
+  });
+  return withTables
+    .replace(/<br\s*\/?>(\r?\n)?/gi, "\n")
+    .replace(/<\/?(?:p|div|section|h[1-6])[^>]*>/gi, "\n")
+    .replace(/<li[^>]*>/gi, "\n- ")
+    .replace(/<\/li>/gi, "")
+    .replace(/<(?:strong|b)[^>]*>([\s\S]*?)<\/(?:strong|b)>/gi, "**$1**")
+    .replace(/<(?:em|i)[^>]*>([\s\S]*?)<\/(?:em|i)>/gi, "*$1*")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">");
+}
+
 /** Small, safe Markdown renderer for model output-no raw HTML is injected into the board. */
 export function MarkdownContent({ content }: { content: string }) {
-  const lines = content.split("\n");
+  const lines = normalizeModelMarkup(content).split("\n");
   const nodes: React.ReactNode[] = [];
   let index = 0;
 

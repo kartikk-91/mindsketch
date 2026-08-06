@@ -26,6 +26,13 @@ const TEXT_SHAPES = new Set<ShapeType>([
 const isTransparentColor = (c?: Color) =>
   !c || (c.r === -1 && c.g === -1 && c.b === -1);
 
+const textColorForFill = (color?: Color) => {
+  if (isTransparentColor(color)) return "#181C31";
+  // Perceived luminance keeps generated labels readable even on saturated fills.
+  const luminance = (0.2126 * color!.r + 0.7152 * color!.g + 0.0722 * color!.b) / 255;
+  return luminance < 0.58 ? "#FFFFFF" : "#181C31";
+};
+
 const shadeColor = (color: Color | undefined, amount: number) => {
   if (isTransparentColor(color)) return "transparent";
   const shade = (channel: number) => Math.round(amount >= 0
@@ -221,6 +228,7 @@ export const ShapeRenderer = ({
   const labelBounds = isConnector
     ? { x: labelCenter.x - connectorLabelWidth / 2, y: labelCenter.y - 11, width: connectorLabelWidth, height: 22 }
     : shapeTextBounds(shape, x, y, width, height);
+  const labelColor = textColorForFill(fill);
 
   
 
@@ -574,7 +582,7 @@ export const ShapeRenderer = ({
       {!isCodeShape && selectionProps && renderShape(selectionProps)}
       {supportsShapeText && layer.value && !isEditing && (
         <foreignObject data-export-shape-text="true" x={labelBounds.x} y={labelBounds.y} width={labelBounds.width} height={labelBounds.height} pointerEvents="none" style={{ border: "none", outline: "none", overflow: "hidden" }}>
-          <div className="grid h-full w-full min-h-0 min-w-0 content-center overflow-auto whitespace-pre-wrap break-words text-sm font-medium leading-5 text-neutral-900" style={{ textAlign: (layer as any).textAlign ?? "center", fontFamily: (layer as any).fontFamily ?? "inherit", fontWeight: (layer as any).fontWeight === "bold" ? 700 : 500, fontSize: (layer as any).fontSize ?? 14 }}>
+          <div className="grid h-full w-full min-h-0 min-w-0 content-center overflow-hidden whitespace-pre-wrap break-words text-sm font-medium leading-5" style={{ color: labelColor, textAlign: (layer as any).textAlign ?? "center", fontFamily: (layer as any).fontFamily ?? "inherit", fontWeight: (layer as any).fontWeight === "bold" ? 700 : 500, fontSize: (layer as any).fontSize ?? 14, textShadow: labelColor === "#FFFFFF" ? "0 1px 1px rgba(0,0,0,0.18)" : "none" }}>
             <span className="block w-full">{plainCode(layer.value)}</span>
           </div>
         </foreignObject>
@@ -606,7 +614,7 @@ export const ShapeRenderer = ({
             }}
             onPointerDown={(event) => event.stopPropagation()}
             className="h-full w-full resize-none overflow-auto bg-transparent p-0 whitespace-pre-wrap break-words text-sm font-medium leading-5 text-neutral-900 outline-none"
-            style={{ pointerEvents: "auto", textAlign: (layer as any).textAlign ?? "center", fontFamily: (layer as any).fontFamily ?? "inherit", fontWeight: (layer as any).fontWeight === "bold" ? 700 : 500, fontSize: (layer as any).fontSize ?? 14 }}
+            style={{ pointerEvents: "auto", color: labelColor, textAlign: (layer as any).textAlign ?? "center", fontFamily: (layer as any).fontFamily ?? "inherit", fontWeight: (layer as any).fontWeight === "bold" ? 700 : 500, fontSize: (layer as any).fontSize ?? 14 }}
           />
         </foreignObject>
       )}

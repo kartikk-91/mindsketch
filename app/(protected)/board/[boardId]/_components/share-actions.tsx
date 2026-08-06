@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import Image from "next/image";
-import { Download, Link2,} from "lucide-react";
+import { Download, Link2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { exportFramePNG } from "@/lib/export-canvas";
@@ -62,7 +62,8 @@ const ShareActions = ({ id }: ShareActionProps) => {
       <div className="relative">
         <button
           onClick={handleOpenChat}
-          aria-label="Chat about this frame"
+          aria-label="Chat with board"
+          title="Chat with board"
           className="
             bg-[linear-gradient(135deg,#20C5A8_0%,#FFB800_100%)]
             p-1 rounded-full
@@ -73,16 +74,9 @@ const ShareActions = ({ id }: ShareActionProps) => {
             focus:outline-none focus:ring-2 focus:ring-[#20C5A8]
           "
         >
-          <Image
-            src="/ai.svg"
-            alt=""
-            width={36}
-            height={36}
-            className="text-white"
-          />
+          <Image src="/ai.svg" alt="" width={36} height={36} className="text-white" />
         </button>
-
-        {chatMounted && <FrameChatPanel boardId={id} isOpen={chatOpen} onClose={handleCloseChat} />}
+        {chatMounted && <FrameChatPanel boardId={id} isOpen={chatOpen} initialMode="chat" onClose={handleCloseChat} />}
       </div>
 
     

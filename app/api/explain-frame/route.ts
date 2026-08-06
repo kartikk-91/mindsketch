@@ -10,7 +10,7 @@ export async function POST(req: Request) {
     const { imageBase64, mimeType } = await req.json();
 
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: "gemini-3.5-flash-lite",
       config: {
         responseMimeType: "application/json",
         temperature: 0.3,
