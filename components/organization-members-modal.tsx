@@ -30,6 +30,7 @@ export function OrganizationMembersModal({ open, onOpenChange }: { open: boolean
     finally { setLoading(false); }
   };
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { if (open && isLoaded && organization) void loadMembers(); }, [open, isLoaded, organization?.id]);
   const otherAdmins = useMemo(() => members.filter((item) => item.role === "org:admin" && item.publicUserData.userId !== user?.id), [members, user?.id]);
 

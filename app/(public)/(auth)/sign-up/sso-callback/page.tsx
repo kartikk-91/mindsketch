@@ -21,7 +21,7 @@ export default function SSOCallbackPage() {
         }
 
         router.replace("/onboarding");
-      } catch (err) {
+      } catch {
         console.error("[auth] oauth_callback_failed");
       }
     }

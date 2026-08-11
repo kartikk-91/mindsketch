@@ -119,7 +119,7 @@ export const FrameChatPanel = ({ boardId, isOpen, initialMode = "chat", viewport
     if (hasStarted) {
       frameChatSessions.set(boardId, { activeImage, hasStarted, imageAnalysis, isFirstReply, messages });
     }
-  }, [boardId, hasStarted]);
+  }, [activeImage, boardId, hasStarted, imageAnalysis, isFirstReply, messages]);
 
   const appendStream = useCallback(async (response: Response, assistantId: string, analyzedMessageId?: string) => {
     if (!response.ok || !response.body) throw new Error("The assistant is temporarily unavailable.");
