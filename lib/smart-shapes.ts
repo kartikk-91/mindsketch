@@ -59,6 +59,7 @@ const selfIntersectionCount = (corners: Point[]) => {
 
 const vector = (from: Point, to: Point): Point => ({ x: to.x - from.x, y: to.y - from.y });
 const parallel = (a: Point, b: Point) => Math.abs(a.x * b.y - a.y * b.x) / Math.max(1, Math.hypot(a.x, a.y) * Math.hypot(b.x, b.y)) < 0.2;
+const normalizedDot = (a: Point, b: Point) => Math.abs(a.x * b.x + a.y * b.y) / Math.max(1, Math.hypot(a.x, a.y) * Math.hypot(b.x, b.y));
 
 const isConvex = (corners: Point[]) => {
   let sign = 0;
@@ -92,10 +93,29 @@ const looksLikeParallelogram = (points: Point[], y: number, width: number, heigh
   const topSpan = topRight - topLeft;
   const bottomSpan = bottomRight - bottomLeft;
   const horizontalShift = ((topLeft - bottomLeft) + (topRight - bottomRight)) / 2;
-  return topSpan > width * 0.45
+  // A small wobble in a hand-drawn rectangle can shift the extrema. Require a
+  // clearly visible offset before treating it as a parallelogram.
+  return topSpan > width * 0.5
     && bottomSpan > width * 0.45
-    && Math.abs(topSpan - bottomSpan) < width * 0.2
-    && Math.abs(horizontalShift) > width * 0.1;
+    && Math.abs(topSpan - bottomSpan) < width * 0.14
+    && Math.abs(horizontalShift) > width * 0.16;
+};
+
+const looksLikeRectangle = (points: Point[], x: number, y: number, width: number, height: number, strokeWidth: number) => {
+  const smallestSide = Math.min(width, height);
+  const tolerance = Math.max(strokeWidth * 2.5, Math.min(smallestSide * 0.14, Math.hypot(width, height) * 0.045));
+  const edgeHits = [0, 0, 0, 0];
+
+  for (const point of points) {
+    const distances = [Math.abs(point.y - y), Math.abs(point.x - (x + width)), Math.abs(point.y - (y + height)), Math.abs(point.x - x)];
+    const nearest = distances.indexOf(Math.min(...distances));
+    if (distances[nearest] <= tolerance) edgeHits[nearest]++;
+  }
+
+  const edgeCoverage = edgeHits.reduce((sum, hits) => sum + hits, 0) / points.length;
+  // All four sides must have meaningful trace coverage. This prevents a
+  // triangle or an open/irregular stroke from becoming a rectangle.
+  return edgeCoverage >= 0.78 && edgeHits.every((hits) => hits >= Math.max(2, points.length * 0.06));
 };
 
 const looksLikeOpenArrow = (points: Point[]) => {
@@ -119,7 +139,10 @@ const looksLikeOpenArrow = (points: Point[]) => {
 
 
 export const recognizeSmartShape = (rawPoints: number[][], color: Color, strokeWidth: number): ShapeLayer | null => {
-  if (rawPoints.length < 10) return null;
+  // A quickly drawn triangle may only contain its three vertices and the
+  // closing point. Closed-shape geometry below still filters accidental taps,
+  // so do not require a long pointer trace here.
+  if (rawPoints.length < 4) return null;
   const points = rawPoints.map(([x, y]) => ({ x, y }));
   const xs = points.map((point) => point.x);
   const ys = points.map((point) => point.y);
@@ -179,16 +202,22 @@ export const recognizeSmartShape = (rawPoints: number[][], color: Color, strokeW
 
   if (corners.length === 4) {
     const edges = corners.map((corner, index) => vector(corner, corners[(index + 1) % 4]));
-    const topBottomHorizontal = Math.abs(edges[0].y) <= Math.abs(edges[0].x) * 0.18
-      && Math.abs(edges[2].y) <= Math.abs(edges[2].x) * 0.18;
-    const sidesVertical = Math.abs(edges[1].x) <= Math.abs(edges[1].y) * 0.18
-      && Math.abs(edges[3].x) <= Math.abs(edges[3].y) * 0.18;
     const diamond = corners.filter((point) => Math.abs(point.x - center.x) < width * 0.22 && (point.y < y + height * 0.22 || point.y > y + height * 0.78)).length >= 2
       && corners.filter((point) => Math.abs(point.y - center.y) < height * 0.22 && (point.x < x + width * 0.22 || point.x > x + width * 0.78)).length >= 2;
     if (diamond) return build(ShapeType.Diamond);
-    if (topBottomHorizontal && sidesVertical) return build(ShapeType.Rectangle);
-    if (parallel(edges[0], edges[2]) && parallel(edges[1], edges[3])) return build(ShapeType.Parallelogram);
+    const oppositeSidesParallel = parallel(edges[0], edges[2]) && parallel(edges[1], edges[3]);
+    const rightAngleFit = (normalizedDot(edges[0], edges[1]) + normalizedDot(edges[1], edges[2]) + normalizedDot(edges[2], edges[3]) + normalizedDot(edges[3], edges[0])) / 4;
+
+    if (oppositeSidesParallel && rightAngleFit < 0.28) return build(ShapeType.Rectangle);
+    // A parallelogram needs both pairs of opposite sides to agree and a clear
+    // non-right angle. Without this, imperfect rectangles are misclassified.
+    if (oppositeSidesParallel && rightAngleFit >= 0.28) return build(ShapeType.Parallelogram);
   }
+
+  // Prefer the robust bounding-edge fit before inferring a skew. It tolerates
+  // natural hand jitter while preserving rectangles whose corner extraction
+  // produced an extra point.
+  if (looksLikeRectangle(points, x, y, width, height, strokeWidth)) return build(ShapeType.Rectangle);
   if (looksLikeParallelogram(points, y, width, height)) return build(ShapeType.Parallelogram);
 
   if (isConvex(corners)) {
@@ -199,7 +228,5 @@ export const recognizeSmartShape = (rawPoints: number[][], color: Color, strokeW
   if (corners.length >= 7 && radialVariation < 0.1 && averageRadius > 0.8 && averageRadius < 1.16) return build(ShapeType.Ellipse);
   if (corners.length >= 7 && concaveTurns >= 2) return build(ShapeType.Cloud);
 
-  const edgeDistance = points.map((point) => Math.min(Math.abs(point.x - x), Math.abs(point.x - (x + width)), Math.abs(point.y - y), Math.abs(point.y - (y + height))));
-  if (edgeDistance.filter((value) => value < smallestSide * 0.1).length / points.length > 0.82) return build(ShapeType.Rectangle);
   return null;
 };

@@ -40,7 +40,7 @@ export const Info = (
             >
                 <Button asChild className="board-logo px-2" variant={"board"}
                 >
-                    <Link href={"/"}>
+                    <Link href={"/dashboard"}>
                         <Image
                             src={"/logo.png"}
                             alt="Logo"

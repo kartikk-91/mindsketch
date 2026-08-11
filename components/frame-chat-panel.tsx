@@ -10,7 +10,7 @@ import { useMutation } from "@liveblocks/react/suspense";
 import { createLayerFromParams, validateLayerParams, applySmartDefaults, CreateLayerParams } from "@/lib/agent-operations";
 
 type ChatImage = ChatImagePreview & { imageBase64: string; mimeType: string };
-type ChatMessage = DisplayMessage & { analysis?: string; hidden?: boolean };
+type ChatMessage = DisplayMessage & { analysis?: string };
 type StreamEvent = { type: "analysis" | "token" | "status" | "done" | "error" | "fallback"; value: string };
 type PanelMode = "chat" | "draw";
 
@@ -58,6 +58,7 @@ export const FrameChatPanel = ({ boardId, isOpen, initialMode = "chat", viewport
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [dragActive, setDragActive] = useState(false);
+  const [hasStarted, setHasStarted] = useState(initialSession.hasStarted);
   const insertLayer = useMutation(
     ({ storage }, params: CreateLayerParams) => {
       const liveLayers = storage.get("layers");
@@ -101,21 +102,24 @@ export const FrameChatPanel = ({ boardId, isOpen, initialMode = "chat", viewport
 
   const { generateDrawing, isProcessing: isAgentProcessing, messages: agentMessages, error: agentError } = useAgentDraw(insertLayer);
   const [isFirstReply, setIsFirstReply] = useState(initialSession.isFirstReply);
-  const [hasStarted, setHasStarted] = useState(initialSession.hasStarted);
   const [restartNonce, setRestartNonce] = useState(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const lastRequestRef = useRef<{ text: string; image?: ChatImage; forceAnalysis?: boolean } | null>(null);
   const isInitializingRef = useRef(false);
+  const hasStartedRef = useRef(initialSession.hasStarted);
+  const sendMessageRef = useRef<((text: string, suppliedImage?: ChatImage, forceAnalysis?: boolean, allowWhileGenerating?: boolean) => Promise<void>) | null>(null);
 
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, status]);
 
-  useEffect(() => {
-    frameChatSessions.set(boardId, { activeImage, hasStarted, imageAnalysis, isFirstReply, messages });
-  }, [activeImage, boardId, hasStarted, imageAnalysis, isFirstReply, messages]);
-
   useEffect(() => { setMode(initialMode); }, [initialMode]);
+
+  useEffect(() => {
+    if (hasStarted) {
+      frameChatSessions.set(boardId, { activeImage, hasStarted, imageAnalysis, isFirstReply, messages });
+    }
+  }, [boardId, hasStarted]);
 
   const appendStream = useCallback(async (response: Response, assistantId: string, analyzedMessageId?: string) => {
     if (!response.ok || !response.body) throw new Error("The assistant is temporarily unavailable.");
@@ -149,7 +153,7 @@ export const FrameChatPanel = ({ boardId, isOpen, initialMode = "chat", viewport
     if (!text.trim() || (isGenerating && !allowWhileGenerating)) return;
     const image = suppliedImage ?? (forceAnalysis ? activeImage ?? undefined : undefined);
     const isNewImage = Boolean(suppliedImage);
-    const userMessage: ChatMessage = { id: crypto.randomUUID(), role: "user", content: text.trim(), image: image ? { previewUrl: image.previewUrl, name: image.name } : undefined, hidden: text.trim() === INITIAL_QUESTION && suppliedImage?.name === "Current board" };
+    const userMessage: ChatMessage = { id: crypto.randomUUID(), role: "user", content: text.trim(), image: image ? { previewUrl: image.previewUrl, name: image.name } : undefined };
     const assistantId = crypto.randomUUID();
     const nextMessages = [...messages, userMessage];
     lastRequestRef.current = { text, image: suppliedImage, forceAnalysis };
@@ -189,27 +193,28 @@ export const FrameChatPanel = ({ boardId, isOpen, initialMode = "chat", viewport
   }, [activeImage, appendStream, imageAnalysis, isGenerating, messages]);
 
   useEffect(() => {
-    if (mode !== "chat") return;
-    if (hasStarted || getSession(boardId).hasStarted) return;
-    if (isInitializingRef.current) return;
+    sendMessageRef.current = sendMessage;
+  }, [sendMessage]);
+
+  useEffect(() => {
+    if (!isOpen || mode !== "chat" || hasStartedRef.current || isInitializingRef.current) return;
     
     // Set ref immediately to prevent race condition
     isInitializingRef.current = true;
+    hasStartedRef.current = true;
     
-    // Update session state
-    const currentSession = getSession(boardId);
-    frameChatSessions.set(boardId, { ...currentSession, hasStarted: true });
+    // Update local state immediately
     setHasStarted(true);
     
-    setIsGenerating(true);
     setStatus("Preparing board…");
     let cancelled = false;
     async function startFrameChat() {
       try {
         const capture = await getFrameForChat();
-        if (!capture || cancelled) throw new Error("I couldn't capture this board. Please try again.");
+        if (!capture) throw new Error("I couldn't capture this board. Please try again.");
+        if (cancelled) return;
         const image: ChatImage = { ...capture, previewUrl: `data:${capture.mimeType};base64,${capture.imageBase64}`, name: "Current board" };
-        await sendMessage(INITIAL_QUESTION, image, false, true);
+        await sendMessageRef.current?.(INITIAL_QUESTION, image, false, true);
       } catch (cause) {
         if (!cancelled) {
           setError(cause instanceof Error ? cause.message : "I couldn't start the chat.");
@@ -221,19 +226,20 @@ export const FrameChatPanel = ({ boardId, isOpen, initialMode = "chat", viewport
     }
     void startFrameChat();
     return () => { cancelled = true; };
-  }, [boardId, hasStarted, mode, restartNonce, sendMessage]);
+  }, [boardId, isOpen, mode, restartNonce]);
 
   const restartChat = () => {
     frameChatSessions.delete(boardId);
     lastRequestRef.current = null;
     isInitializingRef.current = false;
+    hasStartedRef.current = false;
     setMessages([]);
     setActiveImage(null);
     setImageAnalysis(null);
     setIsFirstReply(true);
     setError(null);
-    setStatus("Preparing board…");
-    setIsGenerating(true);
+    setStatus("");
+    setIsGenerating(false);
     setHasStarted(false);
     setRestartNonce((current) => current + 1);
   };
@@ -341,7 +347,7 @@ export const FrameChatPanel = ({ boardId, isOpen, initialMode = "chat", viewport
       <div className="flex-1 overflow-y-auto bg-alabaster/40 px-4 py-4">
         <div className="space-y-3">
           {mode === "chat" ? (
-            messages.filter((message) => !message.hidden && (message.role === "user" || Boolean(message.content) || Boolean(message.image))).map((message) => <MessageBubble key={message.id} message={message} />)
+            messages.filter((message) => message.role === "user" || Boolean(message.content) || Boolean(message.image)).map((message) => <MessageBubble key={message.id} message={message} />)
           ) : (
             agentMessages.map((message, index) => (
               <div key={index} className="flex items-start gap-2">
